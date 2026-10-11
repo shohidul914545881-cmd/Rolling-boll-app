@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Rolling Ball Adventure 3D</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #70d6ff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #fff;
+    }
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+    #confetti-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+      display: none;
+    }
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Top HUD Matching Screenshot */
+    #hud {
+      display: none;
+      width: 100%;
+      padding: 16px 18px;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+    }
+    .hud-left {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
+    }
+    .hud-level-title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #ffffff;
+      text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+      text-transform: uppercase;
+    }
+    .progress-bar-container {
+      width: 210px;
+      height: 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 6px;
+      border: 2px solid rgba(255, 255, 255, 0.7);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38ef7d, #00f2fe);
+      border-radius: 4px;
+      transition: width 0.1s linear;
+    }
+    .progress-flag {
+      position: absolute;
+      right: 3px;
+      top: -2px;
+      font-size: 11px;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+    }
+    .hud-sub-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      margin-top: 2px;
+    }
+    .hud-sub-info span.coin-val {
+      color: #ffd700;
+    }
+
+    /* Top Right Floating Action Buttons (Orange Circles Stacked) */
+    .hud-right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .orange-circle-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffa726, #f57c00);
+      border: 3px solid #ffffff;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+    .orange-circle-btn:active {
+      transform: scale(0.92);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    /* Bottom Steering Buttons (Large Circles: Left ◀ and Right ▶) */
+    #bottom-steer-controls {
+      display: none;
+      position: absolute;
+      bottom: 24px;
+      left: 0;
+      right: 0;
+      padding: 0 24px;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .steer-circle-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #29b6f6, #0288d1);
+      border: 3px solid #ffffff;
+      box-shadow: 0 8px 24px rgba(2, 136, 209, 0.45), inset 0 2px 3px rgba(255,255,255,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 34px;
+      font-weight: 900;
+      cursor: pointer;
+      pointer-events: auto;
+      touch-action: none;
+      transition: transform 0.1s;
+    }
+    .steer-circle-btn:active, .steer-circle-btn.pressed {
+      transform: scale(0.9);
+      background: radial-gradient(circle at 35% 35%, #0288d1, #01579b);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    }
+
+    /* Screen Overlays & Modals */
+    .screen-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 12, 26, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 20;
+      pointer-events: auto;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .screen-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .card-modal {
+      width: 100%;
+      max-width: 420px;
+      background: linear-gradient(145deg, rgba(22, 32, 58, 0.96), rgba(12, 18, 36, 0.96));
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 28px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2);
+      padding: 26px 22px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    h1.game-title {
+      font-size: 26px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      background: linear-gradient(135deg, #fff 0%, #b8c6db 60%, #5ee7df 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2px;
+      text-shadow: 0 4px 20px rgba(94, 231, 223, 0.3);
+    }
+    .sub-heading {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.75);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.1s, box-shadow 0.2s;
+      letter-spacing: 0.5px;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+      color: #032b1a;
+      box-shadow: 0 6px 22px rgba(56, 239, 125, 0.4);
+      font-size: 17px;
+      padding: 16px 22px;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    .btn-accent {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #05263a;
+      box-shadow: 0 6px 20px rgba(0, 242, 254, 0.35);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+      color: #3b2800;
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.35);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(255, 65, 108, 0.35);
+    }
+
+    /* Level Selector with ◀ ▶ */
+    .level-selector-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0;
+    }
+    .arrow-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .arrow-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .arrow-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .level-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .level-num-text {
+      font-size: 28px;
+      font-weight: 900;
+      color: #38ef7d;
+    }
+
+    /* Points Summary Row */
+    .points-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .points-pill {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .points-pill.avail { color: #ffd700; border-color: rgba(255, 215, 0, 0.35); }
+    .points-pill.total { color: #a78bfa; border-color: rgba(167, 139, 250, 0.35); }
+
+    /* Shop Container & 3D Carousel */
+    .shop-container {
+      width: 100%;
+      max-width: 450px;
+      height: 92vh;
+      display: flex;
+      flex-direction: column;
+      padding: 18px;
+      background: linear-gradient(145deg, rgba(20, 26, 48, 0.98), rgba(12, 16, 32, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      pointer-events: auto;
+    }
+    .shop-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .preview-3d-box {
+      width: 100%;
+      height: 190px;
+      border-radius: 20px;
+      background: radial-gradient(circle at center, rgba(35, 48, 88, 0.7) 0%, rgba(14, 18, 36, 0.95) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      margin: 10px 0;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #preview-canvas { width: 100%; height: 100%; }
+    .shop-carousel-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0 10px 0;
+      gap: 12px;
+    }
+    .ball-info-banner {
+      flex: 1;
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      padding: 8px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .ball-name-title { font-size: 16px; font-weight: 800; color: #fff; }
+    .ball-desc-text { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+    .ball-price-tag { font-size: 13px; font-weight: 800; color: #ffd700; margin-top: 2px; }
+    .scroll-grid {
+      flex: 1;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 4px 2px 14px 2px;
+    }
+    .grid-item-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.2s;
+    }
+    .grid-item-card:active { transform: scale(0.96); }
+    .grid-item-card.selected { border-color: #38ef7d; background: rgba(56, 239, 125, 0.12); }
+    .grid-item-card.viewing { border-color: #00f2fe; background: rgba(0, 242, 254, 0.12); }
+    .item-icon-circle {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: #1e2640;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .item-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+    .item-tag {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 8px;
+      text-transform: uppercase;
+    }
+    .tag-equipped { background: #38ef7d; color: #022e17; }
+    .tag-unlocked { background: rgba(255,255,255,0.2); color: #fff; }
+    .tag-locked { background: rgba(255, 65, 108, 0.2); color: #ff6b8b; }
+
+    /* Victory Breakdown */
+    .reward-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 14px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .reward-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+    .stars-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-size: 36px;
+      filter: drop-shadow(0 4px 10px rgba(255, 215, 0, 0.5));
+    }
+
+    /* Settings Sliders & Stats Table */
+    .setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .setting-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #3e4766;
+      border-radius: 22px;
+      transition: .2s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: .2s;
+    }
+    input:checked + .toggle-slider { background-color: #38ef7d; }
+    input:checked + .toggle-slider:before { transform: translateX(18px); }
+    .slider-input {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.2);
+      outline: none;
+    }
+    .slider-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #00f2fe;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+    }
+    .stats-table { width: 100%; font-size: 12px; text-align: left; border-collapse: collapse; margin-top: 4px; }
+    .stats-table td { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .stats-table td:last-child { text-align: right; font-weight: 700; color: #38ef7d; }
+
+    /* Toast */
+    #toast-msg {
+      position: absolute;
+      top: 65px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(16, 24, 46, 0.95);
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      color: #ffd700;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      opacity: 0;
+      transition: all 0.25s ease;
+      pointer-events: none;
+      z-index: 100;
+      max-width: 90%;
+      text-align: center;
+    }
+    #toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D Three.js Game Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Confetti Canvas for Victory -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- UI Layer -->
+  <div id="ui-layer">
+
+    <!-- Active Game HUD Matching Screenshot Exactly -->
+    <div id="hud">
+      <div class="hud-left">
+        <div class="hud-level-title" id="hud-level-title">LEVEL 3</div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="hud-progress-fill"></div>
+          <span class="progress-flag">🏁</span>
+        </div>
+        <div class="hud-sub-info">
+          🪙 <span class="coin-val" id="hud-coins-val">0</span> ● <span id="hud-ball-name">Golden Ball</span>
+        </div>
+      </div>
+
+      <!-- Top Right Stack of 3 Orange Circular Buttons -->
+      <div class="hud-right">
+        <button class="orange-circle-btn" id="btn-hud-pause" title="Pause">⏸</button>
+        <button class="orange-circle-btn" id="btn-hud-restart" title="Restart">🔄</button>
+        <button class="orange-circle-btn" id="btn-hud-sound" title="Sound">🔊</button>
+      </div>
+    </div>
+
+    <!-- Bottom Steering Controls: Large ◀ (Left) and ▶ (Right) Buttons -->
+    <div id="bottom-steer-controls">
+      <button class="steer-circle-btn" id="btn-steer-left">◀</button>
+      <button class="steer-circle-btn" id="btn-steer-right">▶</button>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-msg"></div>
+
+    <!-- SCREEN 1: Main Menu -->
+    <div class="screen-overlay active" id="screen-main-menu">
+      <div class="card-modal">
+        <div style="font-size: 40px; margin-bottom: -6px;">🏁</div>
+        <h1 class="game-title">ROLLING BALL ADVENTURE</h1>
+        <div class="sub-heading">3D MOBILE WATER WORLD</div>
+
+        <div class="points-bar">
+          <div class="points-pill avail">🪙 Available: <strong id="mm-avail-points">0</strong></div>
+          <div class="points-pill total">🏆 Total: <strong id="mm-total-points">0</strong></div>
+        </div>
+
+        <div class="level-selector-box">
+          <button class="arrow-btn" id="btn-lvl-prev">◀</button>
+          <div class="level-display">
+            <span style="font-size: 11px; color: rgba(255,255,255,0.6); font-weight:700; text-transform:uppercase;">CURRENT LEVEL</span>
+            <span class="level-num-text" id="mm-current-level">1</span>
+            <span style="font-size: 11px; color: #a78bfa;" id="mm-highest-tag">Highest: Level 1</span>
+          </div>
+          <button class="arrow-btn" id="btn-lvl-next">▶</button>
+        </div>
+
+        <button class="btn btn-primary" id="btn-play">▶ PLAY LEVEL</button>
+        <button class="btn btn-gold" id="btn-open-shop">⚽ BALL SHOP (10 BALLS)</button>
+        <button class="btn btn-secondary" id="btn-open-settings">⚙️ SETTINGS & STATS</button>
+        <button class="btn btn-danger" style="padding: 10px; font-size:13px;" id="btn-menu-reset">🗑️ RESET GAME DATA</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: Paused -->
+    <div class="screen-overlay" id="screen-paused">
+      <div class="card-modal">
+        <h1 class="game-title">PAUSED</h1>
+        <div class="sub-heading">Take a breather</div>
+        <button class="btn btn-primary" id="btn-resume">RESUME</button>
+        <button class="btn btn-secondary" id="btn-restart">RESTART LEVEL</button>
+        <button class="btn btn-secondary" id="btn-pause-menu">MAIN MENU</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: Game Over -->
+    <div class="screen-overlay" id="screen-game-over">
+      <div class="card-modal">
+        <div style="font-size: 44px;">💥</div>
+        <h1 class="game-title" style="color: #ff416c;">GAME OVER</h1>
+        <div class="sub-heading" id="go-reason">Fell into the water!</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.7);">Falling earns +0 points. Try again!</div>
+
+        <button class="btn btn-primary" id="btn-try-again">TRY AGAIN</button>
+        <button class="btn btn-secondary" id="btn-go-menu">MAIN MENU</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 4: Level Complete (Victory Popup) -->
+    <div class="screen-overlay" id="screen-victory">
+      <div class="card-modal">
+        <div style="font-size: 46px;">🏆</div>
+        <h1 class="game-title" style="color: #38ef7d;">LEVEL COMPLETE!</h1>
+        <div class="stars-container">⭐⭐⭐</div>
+
+        <div class="reward-box">
+          <div class="reward-row">
+            <span>Completed Level:</span>
+            <strong id="vic-completed-level">Level 1</strong>
+          </div>
+          <div class="reward-row">
+            <span>Unlock Status:</span>
+            <strong style="color:#38ef7d;" id="vic-unlock-status">Level 2 Unlocked! 🚀</strong>
+          </div>
+          <div class="reward-row">
+            <span>Level Reward:</span>
+            <strong style="color:#ffd700;" id="vic-reward-points">+100 Points</strong>
+          </div>
+          <div class="reward-row" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+            <span>Available Points:</span>
+            <strong style="color:#ffd700;" id="vic-avail-points">🪙 100</strong>
+          </div>
+          <div class="reward-row">
+            <span>Total Lifetime Points:</span>
+            <strong style="color:#a78bfa;" id="vic-total-points">🏆 100</strong>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-vic-next">NEXT LEVEL ▶</button>
+        <button class="btn btn-gold" id="btn-vic-shop">⚽ BALL SHOP</button>
+        <button class="btn btn-secondary" id="btn-vic-menu">CONTINUE</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 5: Ball Shop (10 Balls with ◀ ▶ Carousel) -->
+    <div class="screen-overlay" id="screen-shop">
+      <div class="shop-container">
+        <div class="shop-header">
+          <div>
+            <h2 style="font-size: 18px; font-weight: 800;">BALL SHOP</h2>
+            <div style="font-size: 12px; color: rgba(255,255,255,0.6);">10 Special Ball Designs</div>
+          </div>
+          <div class="points-pill avail" style="padding: 4px 10px; font-size:12px;">🪙 <span id="shop-avail-chip">0</span></div>
+          <button class="orange-circle-btn" style="width:36px; height:36px; font-size:16px;" id="btn-close-shop">✕</button>
+        </div>
+
+        <div class="preview-3d-box">
+          <canvas id="preview-canvas"></canvas>
+        </div>
+
+        <div class="shop-carousel-controls">
+          <button class="arrow-btn" id="btn-shop-prev">◀</button>
+          <div class="ball-info-banner">
+            <div class="ball-name-title" id="shop-ball-name">Golden Ball</div>
+            <div class="ball-desc-text" id="shop-ball-desc">24K solid gold metallic sphere.</div>
+            <div class="ball-price-tag" id="shop-ball-price">🪙 300 Points</div>
+          </div>
+          <button class="arrow-btn" id="btn-shop-next">▶</button>
+        </div>
+
+        <button class="btn btn-primary" style="margin-bottom: 10px;" id="btn-shop-action">SELECT</button>
+        <div class="scroll-grid" id="balls-grid"></div>
+      </div>
+    </div>
+
+    <!-- SCREEN 6: Settings & Stats -->
+    <div class="screen-overlay" id="screen-settings">
+      <div class="card-modal">
+        <div class="shop-header" style="border:none; padding:0;">
+          <h2 style="font-size: 20px; font-weight: 800;">SETTINGS & STATS</h2>
+          <button class="orange-circle-btn" style="width:36px; height:36px; font-size:16px;" id="btn-close-settings">✕</button>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-row">
+            <span>🎵 Background Music</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-music" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <input type="range" min="0" max="1" step="0.05" value="0.7" class="slider-input" id="slider-music">
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-row">
+            <span>🔊 Sound Effects</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-sfx" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <input type="range" min="0" max="1" step="0.05" value="0.8" class="slider-input" id="slider-sfx">
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-label-row">
+            <span>🎮 Steering Sensitivity</span>
+            <span style="font-size: 12px; color:#5ee7df;" id="sens-label">1.0x</span>
+          </div>
+          <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="slider-input" id="slider-sens">
+        </div>
+
+        <div class="setting-row">
+          <div style="font-size: 13px; font-weight:800; color:#ffd700;">📊 STATISTICS</div>
+          <table class="stats-table">
+            <tr><td>Games Played</td><td id="stat-games">0</td></tr>
+            <tr><td>Levels Completed</td><td id="stat-completed">0</td></tr>
+            <tr><td>Falls in Water</td><td id="stat-falls">0</td></tr>
+            <tr><td>Balls Owned</td><td id="stat-balls">1 / 10</td></tr>
+            <tr><td>Time Played</td><td id="stat-time">0m 0s</td></tr>
+          </table>
+        </div>
+
+        <div id="storage-status-chip" style="font-size: 11px; color: rgba(255,255,255,0.6); padding: 4px;">
+          💾 Saved locally on this device.
+        </div>
+
+        <button class="btn btn-danger" style="margin-top: 4px;" id="btn-settings-reset">🗑️ RESET GAME DATA</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 7: Confirm Reset Modal -->
+    <div class="screen-overlay" id="screen-confirm-reset" style="z-index: 35;">
+      <div class="card-modal">
+        <div style="font-size: 40px;">⚠️</div>
+        <h2 style="font-size: 19px; font-weight: 900; color: #ff4b2b;">DELETE ALL DATA?</h2>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.4;">
+          This permanently deletes your level, points, purchased balls and statistics. It cannot be undone.
+        </p>
+        <div style="display:flex; gap:10px; margin-top: 8px;">
+          <button class="btn btn-secondary" style="flex:1;" id="btn-cancel-reset">CANCEL</button>
+          <button class="btn btn-danger" style="flex:1;" id="btn-confirm-reset">DELETE EVERYTHING</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Local Offline Three.js Script -->
+  <script src="three.min.js"></script>
+
+  <script>
+    /* ==========================================================================
+       ROLLING BALL ADVENTURE 3D - WATER PHYSICS, TREE ANIMATION & SMOOTH MOTION
+       ========================================================================== */
+
+    // --- 1. 10 SPECIAL BALLS (Silver to Diamond 5,000) ---
+    const SHOP_BALLS = [
+      { id: 1, name: "Silver Ball", price: 0, icon: "⚪", color: 0xe0e0e0, desc: "Default polished shiny chrome sphere.", free: true },
+      { id: 2, name: "Wood Classic", price: 150, icon: "🪵", color: 0xb45309, desc: "Rich oak wood finish with warm grain." },
+      { id: 3, name: "Golden Ball", price: 300, icon: "🟡", color: 0xf59e0b, desc: "24K solid gold metallic body with specular glint.", isGold: true },
+      { id: 4, name: "Emerald Ball", price: 600, icon: "🟢", color: 0x10b981, desc: "Radiant gemstone luster with emerald finish." },
+      { id: 5, name: "Ruby Ball", price: 1000, icon: "🔴", color: 0xef4444, desc: "Glossy crimson ruby with fiery red reflections." },
+      { id: 6, name: "Neon Glow Ball", price: 1500, icon: "💡", color: 0x06b6d4, desc: "Pulsating cyan neon energy core that glows.", isGlow: true },
+      { id: 7, name: "Lava Core Ball", price: 2200, icon: "🌋", color: 0xea580c, desc: "Volcanic basalt with glowing magma fissures.", isLava: true },
+      { id: 8, name: "Electric Lightning", price: 3000, icon: "⚡", color: 0x3b82f6, desc: "Crackling animated electric blue lightning aura.", isElectric: true },
+      { id: 9, name: "Galaxy Ball", price: 4000, icon: "🌌", color: 0x6366f1, desc: "Deep space cosmic nebula with orbiting starlight.", isGalaxy: true },
+      { id: 10, name: "Diamond Ball", price: 5000, icon: "💎", color: 0xffffff, desc: "Faceted crystalline diamond shifting prismatic colors while rolling!", isDiamond: true }
+    ];
+
+    // --- 2. PERSISTENT SAVE DATA ---
+    const SAVE_KEY = "rba_save_v5_water";
+    let gameSave = {
+      level: 1,
+      highestUnlockedLevel: 1,
+      totalPoints: 0,
+      availablePoints: 0,
+      purchasedBalls: [1],
+      equippedBall: 3, // Golden Ball default or equipped as in screenshot!
+      claimedLevelRewards: [],
+      statistics: {
+        gamesPlayed: 0,
+        levelsCompleted: 0,
+        falls: 0,
+        timePlayedSeconds: 0
+      },
+      soundSettings: {
+        musicEnabled: true,
+        sfxEnabled: true,
+        musicVolume: 0.7,
+        sfxVolume: 0.8,
+        sensitivity: 1.0
+      }
+    };
+
+    function loadSaveData() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.level === "number" && parsed.level >= 1) gameSave.level = parsed.level;
+          if (typeof parsed.highestUnlockedLevel === "number" && parsed.highestUnlockedLevel >= 1) gameSave.highestUnlockedLevel = parsed.highestUnlockedLevel;
+          if (typeof parsed.totalPoints === "number" && parsed.totalPoints >= 0) gameSave.totalPoints = parsed.totalPoints;
+          if (typeof parsed.availablePoints === "number" && parsed.availablePoints >= 0) gameSave.availablePoints = parsed.availablePoints;
+          if (Array.isArray(parsed.purchasedBalls)) gameSave.purchasedBalls = parsed.purchasedBalls;
+          if (typeof parsed.equippedBall === "number") gameSave.equippedBall = parsed.equippedBall;
+          if (Array.isArray(parsed.claimedLevelRewards)) gameSave.claimedLevelRewards = parsed.claimedLevelRewards;
+          if (parsed.statistics) Object.assign(gameSave.statistics, parsed.statistics);
+          if (parsed.soundSettings) Object.assign(gameSave.soundSettings, parsed.soundSettings);
+        } else {
+          // Check previous v4
+          const prev = localStorage.getItem("rba_save_master_v4");
+          if (prev) {
+            try {
+              const p = JSON.parse(prev);
+              if (p.level) gameSave.level = p.level;
+              if (p.highestUnlockedLevel) gameSave.highestUnlockedLevel = p.highestUnlockedLevel;
+              if (p.totalPoints !== undefined) gameSave.totalPoints = p.totalPoints;
+              if (p.availablePoints !== undefined) gameSave.availablePoints = p.availablePoints;
+              if (p.purchasedBalls) gameSave.purchasedBalls = p.purchasedBalls;
+              if (p.equippedBall) gameSave.equippedBall = p.equippedBall;
+            } catch (_) {}
+          }
+        }
+      } catch (e) {
+        console.warn("Storage load error:", e);
+      }
+
+      if (!gameSave.purchasedBalls.includes(1)) gameSave.purchasedBalls.push(1);
+      if (!gameSave.purchasedBalls.includes(3)) gameSave.purchasedBalls.push(3); // Golden ball unlocked for screenshot consistency
+      if (!gameSave.purchasedBalls.includes(gameSave.equippedBall)) gameSave.equippedBall = 3;
+      if (gameSave.level > gameSave.highestUnlockedLevel) gameSave.level = gameSave.highestUnlockedLevel;
+    }
+
+    function saveGameData() {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(gameSave));
+      } catch (_) {}
+      updateUIHud();
+    }
+
+    function resetAllGameData() {
+      try {
+        localStorage.removeItem(SAVE_KEY);
+        localStorage.removeItem("rba_save_master_v4");
+      } catch (_) {}
+
+      gameSave = {
+        level: 1,
+        highestUnlockedLevel: 1,
+        totalPoints: 0,
+        availablePoints: 0,
+        purchasedBalls: [1, 3],
+        equippedBall: 3,
+        claimedLevelRewards: [],
+        statistics: { gamesPlayed: 0, levelsCompleted: 0, falls: 0, timePlayedSeconds: 0 },
+        soundSettings: { musicEnabled: true, sfxEnabled: true, musicVolume: 0.7, sfxVolume: 0.8, sensitivity: 1.0 }
+      };
+
+      saveGameData();
+      spawnPlayerBall();
+      setCarouselBall(3);
+      showToast("All game data reset to starting values!");
+    }
+
+    // --- 3. AUDIO ENGINE ---
+    class GameAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.musicGain = null;
+        this.sfxGain = null;
+        this.masterGain = null;
+        this.bgmTimer = null;
+        this.isPlayingBgm = false;
+        this.step = 0;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.value = gameSave.soundSettings.musicEnabled ? gameSave.soundSettings.musicVolume * 0.4 : 0;
+        this.musicGain.connect(this.masterGain);
+
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = gameSave.soundSettings.sfxEnabled ? gameSave.soundSettings.sfxVolume * 0.8 : 0;
+        this.sfxGain.connect(this.masterGain);
+      }
+
+      resume() {
+        this.init();
+        if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+      }
+
+      updateVolumes() {
+        if (!this.ctx) return;
+        this.musicGain.gain.value = gameSave.soundSettings.musicEnabled ? gameSave.soundSettings.musicVolume * 0.4 : 0;
+        this.sfxGain.gain.value = gameSave.soundSettings.sfxEnabled ? gameSave.soundSettings.sfxVolume * 0.8 : 0;
+      }
+
+      playSfx(type) {
+        if (!gameSave.soundSettings.sfxEnabled) return;
+        this.resume();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+          if (type === "collision") window.AndroidBridge.vibrate(15);
+          else if (type === "splash" || type === "fall") window.AndroidBridge.vibrate(45);
+          else if (type === "victory") window.AndroidBridge.vibrate(80);
+        }
+
+        switch (type) {
+          case "coin": {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(987.77, t);
+            osc.frequency.setValueAtTime(1318.51, t + 0.08);
+            gain.gain.setValueAtTime(0.25, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.25);
+            break;
+          }
+          case "collision": {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(130, t);
+            osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+            gain.gain.setValueAtTime(0.35, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.1);
+            break;
+          }
+          case "splash": {
+            const bufferSize = Math.floor(this.ctx.sampleRate * 0.5);
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.14));
+            }
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(1100, t);
+            filter.frequency.exponentialRampToValueAtTime(140, t + 0.48);
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.65, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.48);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.sfxGain);
+            noise.start(t);
+
+            // Bubbly water bloop oscillation
+            const osc = this.ctx.createOscillator();
+            const oscGain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(130, t);
+            osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
+            osc.frequency.exponentialRampToValueAtTime(80, t + 0.35);
+            oscGain.gain.setValueAtTime(0.4, t);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+            osc.connect(oscGain);
+            oscGain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.35);
+            break;
+          }
+          case "victory": {
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(freq, t + idx * 0.1);
+              gain.gain.setValueAtTime(0.3, t + idx * 0.1);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.1 + 0.45);
+              osc.connect(gain);
+              gain.connect(this.sfxGain);
+              osc.start(t + idx * 0.1);
+              osc.stop(t + idx * 0.1 + 0.45);
+            });
+            break;
+          }
+          case "buy": {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(800, t);
+            osc.frequency.exponentialRampToValueAtTime(1600, t + 0.2);
+            gain.gain.setValueAtTime(0.3, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.25);
+            break;
+          }
+          case "click": {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(650, t);
+            gain.gain.setValueAtTime(0.15, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(t);
+            osc.stop(t + 0.05);
+            break;
+          }
+        }
+      }
+
+      startBgm() {
+        if (!gameSave.soundSettings.musicEnabled) return;
+        this.resume();
+        if (!this.ctx) return;
+        this.stopBgm();
+        this.isPlayingBgm = true;
+        this.step = 0;
+
+        const scale = [261.63, 293.66, 329.63, 392.00, 440.00];
+        const bassNotes = [130.81, 164.81, 196.00];
+        const interval = (60 / 110) * 1000 / 2;
+
+        this.bgmTimer = setInterval(() => {
+          if (!this.isPlayingBgm || !this.ctx || !gameSave.soundSettings.musicEnabled) return;
+          const t = this.ctx.currentTime;
+
+          if (this.step % 2 === 0 || Math.random() > 0.45) {
+            const freq = scale[Math.floor(Math.random() * scale.length)];
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.06, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+            osc.connect(gain);
+            gain.connect(this.musicGain);
+            osc.start(t);
+            osc.stop(t + 0.3);
+          }
+
+          if (this.step % 4 === 0) {
+            const bFreq = bassNotes[(this.step / 4) % bassNotes.length];
+            const bOsc = this.ctx.createOscillator();
+            const bGain = this.ctx.createGain();
+            bOsc.type = "triangle";
+            bOsc.frequency.setValueAtTime(bFreq, t);
+            bGain.gain.setValueAtTime(0.1, t);
+            bGain.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
+            bOsc.connect(bGain);
+            bGain.connect(this.musicGain);
+            bOsc.start(t);
+            bOsc.stop(t + 0.8);
+          }
+
+          this.step = (this.step + 1) % 32;
+        }, interval);
+      }
+
+      stopBgm() {
+        this.isPlayingBgm = false;
+        if (this.bgmTimer) {
+          clearInterval(this.bgmTimer);
+          this.bgmTimer = null;
+        }
+      }
+    }
+
+    const audio = new GameAudioEngine();
+
+    // --- 4. 3D BALL MESH FACTORY ---
+    function createBallMesh(ballId) {
+      const def = SHOP_BALLS.find(b => b.id === ballId) || SHOP_BALLS[2]; // Golden default
+      const radius = 1.0;
+      const group = new THREE.Group();
+
+      const geom = new THREE.SphereGeometry(radius, 32, 32);
+      let mat;
+
+      if (ballId === 3) {
+        // Golden Ball as in screenshot: warm yellow-gold metallic with specular latitude stripe grooves
+        mat = new THREE.MeshStandardMaterial({
+          color: 0xfacc15,
+          metalness: 0.9,
+          roughness: 0.25,
+          emissive: 0xb45309,
+          emissiveIntensity: 0.15
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        group.add(mesh);
+
+        // Latitude decorative groove rings
+        for (let r = -1; r <= 1; r++) {
+          if (r === 0) continue;
+          const grooveGeom = new THREE.TorusGeometry(radius * Math.cos(r * 0.5) * 1.005, 0.035, 8, 32);
+          const grooveMat = new THREE.MeshStandardMaterial({ color: 0xca8a04, metalness: 0.8, roughness: 0.3 });
+          const groove = new THREE.Mesh(grooveGeom, grooveMat);
+          groove.position.y = radius * Math.sin(r * 0.5);
+          groove.rotation.x = Math.PI / 2;
+          group.add(groove);
+        }
+      } else if (ballId === 10) {
+        // Diamond Ball
+        const diamGeom = new THREE.IcosahedronGeometry(radius, 2);
+        mat = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          transmission: 0.75,
+          roughness: 0.1,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.85
+        });
+        const mesh = new THREE.Mesh(diamGeom, mat);
+        mesh.userData.isDiamond = true;
+        group.add(mesh);
+      } else if (ballId === 7) {
+        // Lava
+        mat = new THREE.MeshStandardMaterial({ color: 0xea580c, emissive: 0xff3b00, emissiveIntensity: 0.8, roughness: 0.6 });
+        group.add(new THREE.Mesh(geom, mat));
+      } else if (ballId === 6) {
+        // Neon
+        mat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 0.9, roughness: 0.2 });
+        group.add(new THREE.Mesh(geom, mat));
+      } else {
+        mat = new THREE.MeshStandardMaterial({
+          color: def.color,
+          metalness: (ballId === 1 || ballId === 8) ? 0.9 : 0.35,
+          roughness: (ballId === 2) ? 0.65 : 0.25
+        });
+        group.add(new THREE.Mesh(geom, mat));
+      }
+
+      return group;
+    }
+
+    // --- 5. SHOP 3D PREVIEW CAROUSEL ---
+    let previewScene, previewCamera, previewRenderer, previewBallGroup;
+    let viewingBallIndex = 2; // Golden Ball by default
+
+    function initShopPreview() {
+      const canvas = document.getElementById("preview-canvas");
+      if (!canvas) return;
+      if (previewRenderer) {
+        setCarouselBall(SHOP_BALLS[viewingBallIndex].id);
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(rect.width || 360, 100);
+      const height = Math.max(rect.height || 180, 50);
+
+      previewScene = new THREE.Scene();
+      previewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 50);
+      previewCamera.position.set(0, 1.2, 3.2);
+      previewCamera.lookAt(0, 0, 0);
+
+      try {
+        previewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "default" });
+      } catch (_) {
+        previewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+      }
+      previewRenderer.setSize(width, height);
+      previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.95);
+      previewScene.add(ambLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+      dirLight.position.set(2, 4, 3);
+      previewScene.add(dirLight);
+
+      setCarouselBall(gameSave.equippedBall);
+    }
+
+    function setCarouselBall(ballId) {
+      const idx = SHOP_BALLS.findIndex(b => b.id === ballId);
+      if (idx !== -1) viewingBallIndex = idx;
+      const def = SHOP_BALLS[viewingBallIndex];
+
+      if (!previewScene) return;
+      if (previewBallGroup) previewScene.remove(previewBallGroup);
+      previewBallGroup = createBallMesh(def.id);
+      previewScene.add(previewBallGroup);
+
+      document.getElementById("shop-ball-name").textContent = def.name;
+      document.getElementById("shop-ball-desc").textContent = def.desc;
+      document.getElementById("shop-ball-price").textContent = def.price === 0 ? "FREE" : `🪙 ${def.price} Points`;
+
+      const actionBtn = document.getElementById("btn-shop-action");
+      const isOwned = gameSave.purchasedBalls.includes(def.id);
+      const isSelected = gameSave.equippedBall === def.id;
+
+      if (isSelected) {
+        actionBtn.className = "btn btn-secondary";
+        actionBtn.textContent = "SELECTED";
+        actionBtn.disabled = true;
+      } else if (isOwned) {
+        actionBtn.className = "btn btn-accent";
+        actionBtn.textContent = "SELECT";
+        actionBtn.disabled = false;
+        actionBtn.onclick = () => {
+          gameSave.equippedBall = def.id;
+          saveGameData();
+          audio.playSfx("click");
+          spawnPlayerBall();
+          setCarouselBall(def.id);
+          renderShopGrid();
+          showToast(`Equipped ${def.name}!`);
+        };
+      } else {
+        actionBtn.className = "btn btn-gold";
+        actionBtn.textContent = `BUY 🪙 ${def.price}`;
+        actionBtn.disabled = false;
+        actionBtn.onclick = () => {
+          if (gameSave.availablePoints >= def.price) {
+            gameSave.availablePoints -= def.price;
+            gameSave.purchasedBalls.push(def.id);
+            gameSave.equippedBall = def.id;
+            saveGameData();
+            audio.playSfx("buy");
+            spawnPlayerBall();
+            setCarouselBall(def.id);
+            renderShopGrid();
+            showToast(`Purchased & Equipped ${def.name}!`);
+          } else {
+            audio.playSfx("click");
+            showToast(`Not enough points! (Need ${def.price - gameSave.availablePoints} more)`);
+          }
+        };
+      }
+
+      renderShopGrid();
+    }
+
+    function renderShopGrid() {
+      const grid = document.getElementById("balls-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      SHOP_BALLS.forEach(ball => {
+        const isOwned = gameSave.purchasedBalls.includes(ball.id);
+        const isSelected = gameSave.equippedBall === ball.id;
+        const isViewing = SHOP_BALLS[viewingBallIndex].id === ball.id;
+
+        const card = document.createElement("div");
+        card.className = `grid-item-card ${isSelected ? "selected" : ""} ${isViewing ? "viewing" : ""}`;
+
+        let tagHtml = "";
+        if (isSelected) tagHtml = `<span class="item-tag tag-equipped">SELECTED</span>`;
+        else if (isOwned) tagHtml = `<span class="item-tag tag-unlocked">OWNED</span>`;
+        else tagHtml = `<span class="item-tag tag-locked">🪙 ${ball.price}</span>`;
+
+        card.innerHTML = `
+          <div class="item-icon-circle">${ball.icon}</div>
+          <div class="item-title">${ball.name}</div>
+          ${tagHtml}
+        `;
+
+        card.onclick = () => {
+          audio.playSfx("click");
+          setCarouselBall(ball.id);
+        };
+
+        grid.appendChild(card);
+      });
+    }
+
+    // --- 6. 3D GAME WORLD: WATER, PALM TREES & PLANK BRIDGE ---
+    let scene, camera, renderer;
+    let playerBall, dropShadowMesh;
+    let waterMesh, waterInitialPositions = [];
+    let activeWaterRipples = [];
+    let waterSplashParticles = [];
+    let animatedTrees = [];
+    let waterSplashRings = [];
+    let islandObjects = [];
+    let trackObjects = [];
+    let coinObjects = [];
+    let inWorldLevelBanner = null;
+
+    // Smooth Physics State
+    let ballPos = null;
+    let ballVel = null;
+    let ballSquash = 1.0;
+    let ballLeanAngle = 0.0;
+    let targetSteer = 0;
+    let currentSteer = 0;
+    let isGrounded = false;
+    let isFallingInHazard = false;
+    let hazardTimer = 0;
+    let waterBobPhase = 0;
+    let trackLength = 220;
+    let isGameRunning = false;
+    let isPaused = false;
+    let lastTime = performance.now();
+
+    // Frame-rate independent exponential smoothing helper (Freya Holmér formula)
+    function expDecay(current, target, decay, dt) {
+      return target + (current - target) * Math.exp(-decay * dt);
+    }
+
+    // Dynamic Multi-Harmonic Ocean Wave Surface Calculation with Ripple Displacements
+    function getWaterWaveHeight(worldX, worldZ, time) {
+      const w1 = Math.sin(worldX * 0.07 + worldZ * 0.04 + time * 2.2) * 0.38;
+      const w2 = Math.cos(worldX * 0.03 - worldZ * 0.08 + time * 1.8) * 0.28;
+      const w3 = Math.sin((worldX + worldZ) * 0.11 + time * 3.0) * 0.12;
+      let totalH = w1 + w2 + w3;
+
+      // Add dynamic interactive ripples
+      for (let r = 0; r < activeWaterRipples.length; r++) {
+        const rip = activeWaterRipples[r];
+        const dx = worldX - rip.x;
+        const dz = worldZ - rip.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        const diff = dist - rip.radius;
+        if (Math.abs(diff) < 7.0) {
+          const ripWave = Math.sin(diff * rip.frequency) * rip.amplitude * Math.exp(-dist * 0.06);
+          totalH += ripWave;
+        }
+      }
+      return totalH;
+    }
+
+    // Add Dynamic Radial Water Wave Disruption
+    function addWaterDisturbance(x, z, intensity = 1.0) {
+      activeWaterRipples.push({
+        x: x,
+        z: z,
+        radius: 0.5,
+        maxRadius: 32.0,
+        amplitude: 0.75 * intensity,
+        speed: 13.0,
+        damping: 0.96,
+        frequency: 1.5
+      });
+      if (activeWaterRipples.length > 8) {
+        activeWaterRipples.shift();
+      }
+    }
+
+    function initGameEngine() {
+      const canvas = document.getElementById("game-canvas");
+      try {
+        renderer = new THREE.WebGLRenderer({
+          canvas: canvas,
+          antialias: false,
+          powerPreference: "default",
+          failIfMajorPerformanceCaveat: false,
+          alpha: false,
+          depth: true,
+          stencil: false
+        });
+      } catch (_) {
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
+      }
+      if (!renderer) return;
+
+      const w = Math.max(window.innerWidth || document.documentElement.clientWidth || 360, 100);
+      const h = Math.max(window.innerHeight || document.documentElement.clientHeight || 640, 100);
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.shadowMap.enabled = false;
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(55, w / h, 0.2, 500);
+
+      window.addEventListener("resize", onWindowResize);
+      setupSteeringControls();
+      buildWaterAndTropicalWorld();
+      buildLevelTrack(gameSave.level);
+      spawnPlayerBall();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function onWindowResize() {
+      if (!renderer || !camera) return;
+      const w = Math.max(window.innerWidth || document.documentElement.clientWidth || 360, 100);
+      const h = Math.max(window.innerHeight || document.documentElement.clientHeight || 640, 100);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+
+      if (previewRenderer && previewCamera) {
+        const pCanvas = document.getElementById("preview-canvas");
+        if (pCanvas) {
+          const rect = pCanvas.getBoundingClientRect();
+          const pw = Math.max(rect.width || 360, 100);
+          const ph = Math.max(rect.height || 180, 50);
+          previewCamera.aspect = pw / ph;
+          previewCamera.updateProjectionMatrix();
+          previewRenderer.setSize(pw, ph);
+        }
+      }
+    }
+
+    // --- 7. WATER WORLD, ANIMATED PALM TREES & ISLANDS ---
+    function buildWaterAndTropicalWorld() {
+      // Clear scenery
+      animatedTrees = [];
+      waterSplashRings = [];
+      waterSplashParticles = [];
+      activeWaterRipples = [];
+
+      // Sky & Warm Fog matching screenshot
+      scene.background = new THREE.Color(0x7ed6fb);
+      scene.fog = new THREE.FogExp2(0xb5e8fc, 0.012);
+
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.95);
+      scene.add(ambLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.35);
+      sunLight.position.set(40, 80, -30);
+      scene.add(sunLight);
+
+      // Distant Low-Poly Green Mountains
+      const mtnMat = new THREE.MeshStandardMaterial({ color: 0x48a868, roughness: 0.9, flatShading: true });
+      const mtnPositions = [
+        { x: -95, y: 15, z: 120, r: 45, h: 55 },
+        { x: 100, y: 15, z: 150, r: 50, h: 60 },
+        { x: -85, y: 12, z: 260, r: 40, h: 48 },
+        { x: 90, y: 14, z: 300, r: 45, h: 52 },
+        { x: -90, y: 16, z: 420, r: 48, h: 56 },
+        { x: 95, y: 15, z: 470, r: 52, h: 62 }
+      ];
+      mtnPositions.forEach(m => {
+        const cone = new THREE.ConeGeometry(m.r, m.h, 5);
+        const mtn = new THREE.Mesh(cone, mtnMat);
+        mtn.position.set(m.x, m.y, m.z);
+        scene.add(mtn);
+      });
+
+      // Animated Water Mesh with Ripple Vertices
+      const waterGeom = new THREE.PlaneGeometry(360, 850, 42, 60);
+      const waterMat = new THREE.MeshStandardMaterial({
+        color: 0x00d2f2, // Turquoise water like in screenshot
+        roughness: 0.1,
+        metalness: 0.45,
+        transparent: true,
+        opacity: 0.88,
+        flatShading: true
+      });
+      waterMesh = new THREE.Mesh(waterGeom, waterMat);
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.set(0, -5.5, 320);
+      scene.add(waterMesh);
+
+      // Store initial Z (height) values and precalculated world coords for performance
+      const pos = waterMesh.geometry.attributes.position;
+      waterInitialPositions = [];
+      for (let i = 0; i < pos.count; i++) {
+        const lx = pos.getX(i);
+        const ly = pos.getY(i);
+        waterInitialPositions.push({
+          x: lx,
+          y: ly,
+          worldX: lx,
+          worldZ: 320 - ly
+        });
+      }
+
+      // Build Sandy Islands with Animated Palm Trees & Rocks
+      buildSandyIslandsAndTrees();
+    }
+
+    function buildSandyIslandsAndTrees() {
+      // Clear previous island meshes if any
+      islandObjects.forEach(obj => scene.remove(obj));
+      islandObjects = [];
+      animatedTrees = [];
+
+      const sandMat = new THREE.MeshStandardMaterial({ color: 0xfff3b0, roughness: 0.95, flatShading: true });
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x78869b, roughness: 0.8, flatShading: true });
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7c4723, roughness: 0.9 });
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.6, side: THREE.DoubleSide, flatShading: true });
+      const coconutMat = new THREE.MeshStandardMaterial({ color: 0x4a2c11, roughness: 0.85 });
+
+      const maxTrackZ = Math.max(220, trackLength);
+      const count = Math.max(7, Math.floor(maxTrackZ / 34) + 2);
+
+      for (let idx = 0; idx < count; idx++) {
+        const isLeft = idx % 2 === 0;
+        const islandZ = 22 + idx * 34 + Math.sin(idx * 2.7) * 7.0;
+        const islandX = isLeft ? -15.5 - (idx % 3) * 2.2 : 15.5 + (idx % 3) * 2.2;
+        const islandRadius = 8.5 + (idx % 3) * 1.5;
+
+        // Sand Mound
+        const islandGeom = new THREE.CylinderGeometry(islandRadius, islandRadius * 1.35, 3.8, 9);
+        const island = new THREE.Mesh(islandGeom, sandMat);
+        island.position.set(islandX, -4.5, islandZ);
+        scene.add(island);
+        islandObjects.push(island);
+
+        // Grey low-poly boulders near island
+        for (let b = 0; b < 2; b++) {
+          const boulderGeom = new THREE.DodecahedronGeometry(1.4 + Math.random() * 0.8, 0);
+          const boulder = new THREE.Mesh(boulderGeom, rockMat);
+          boulder.position.set(islandX + (b === 0 ? 3.2 : -3.2), -3.9, islandZ + (b === 0 ? 2.2 : -2.2));
+          boulder.rotation.set(Math.random(), Math.random(), Math.random());
+          scene.add(boulder);
+          islandObjects.push(boulder);
+        }
+
+        // Multi-Joint Animated Palm Tree with Elastic Wind Bending
+        const treeGroup = new THREE.Group();
+        treeGroup.position.set(islandX + (isLeft ? 1.4 : -1.4), -3.0, islandZ);
+
+        // Trunk Segment 1 (Base Trunk)
+        const trunkSeg1Geom = new THREE.CylinderGeometry(0.42, 0.55, 3.6, 6);
+        const trunkSeg1 = new THREE.Mesh(trunkSeg1Geom, trunkMat);
+        trunkSeg1.position.y = 1.8;
+        treeGroup.add(trunkSeg1);
+
+        // Trunk Segment 2 (Mid-Upper Joint with Dynamic Wind Pivot)
+        const trunkSeg2Group = new THREE.Group();
+        trunkSeg2Group.position.y = 3.6;
+        const trunkSeg2Geom = new THREE.CylinderGeometry(0.32, 0.42, 4.0, 6);
+        const trunkSeg2 = new THREE.Mesh(trunkSeg2Geom, trunkMat);
+        trunkSeg2.position.y = 2.0;
+        trunkSeg2Group.add(trunkSeg2);
+        treeGroup.add(trunkSeg2Group);
+
+        // Swaying Tree Crown Group at the top of trunk
+        const crown = new THREE.Group();
+        crown.position.y = 4.0;
+        trunkSeg2Group.add(crown);
+
+        // Brown Coconuts nestled in the crown
+        for (let c = 0; c < 3; c++) {
+          const nutGeom = new THREE.DodecahedronGeometry(0.36, 0);
+          const nut = new THREE.Mesh(nutGeom, coconutMat);
+          const cAngle = (c / 3) * Math.PI * 2;
+          nut.position.set(Math.cos(cAngle) * 0.45, -0.2, Math.sin(cAngle) * 0.45);
+          crown.add(nut);
+        }
+
+        // 7 Palm Fronds / Leaves spreading outward with individual flutter
+        const leaves = [];
+        const numFronds = 7;
+        for (let l = 0; l < numFronds; l++) {
+          const angle = (l / numFronds) * Math.PI * 2;
+          const frondGroup = new THREE.Group();
+          frondGroup.rotation.y = angle;
+
+          const leafGeom = new THREE.PlaneGeometry(1.25, 4.2);
+          const leaf = new THREE.Mesh(leafGeom, leafMat);
+          leaf.position.set(0, -0.35, 2.1);
+          leaf.rotation.x = -0.62; // Drooping natural curve
+          frondGroup.add(leaf);
+          crown.add(frondGroup);
+
+          leaves.push({
+            group: frondGroup,
+            baseRotX: frondGroup.rotation.x,
+            baseRotZ: frondGroup.rotation.z,
+            flutterSpeed: 3.2 + Math.random() * 1.6,
+            flutterPhase: Math.random() * Math.PI * 2
+          });
+        }
+
+        // Swaying tropical fern bush at the base of tree
+        const bushGroup = new THREE.Group();
+        bushGroup.position.set(0.5, 0.3, 0.4);
+        for (let f = 0; f < 5; f++) {
+          const fAngle = (f / 5) * Math.PI * 2;
+          const fernLeaf = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 1.8), leafMat);
+          fernLeaf.position.set(Math.cos(fAngle) * 0.7, 0.3, Math.sin(fAngle) * 0.7);
+          fernLeaf.rotation.y = fAngle;
+          fernLeaf.rotation.x = -0.42;
+          bushGroup.add(fernLeaf);
+        }
+        treeGroup.add(bushGroup);
+
+        scene.add(treeGroup);
+        islandObjects.push(treeGroup);
+
+        // Register tree for real-time wind and leaf animation
+        animatedTrees.push({
+          treeGroup: treeGroup,
+          trunkSeg2Group: trunkSeg2Group,
+          crown: crown,
+          bushGroup: bushGroup,
+          leaves: leaves,
+          baseTiltZ: isLeft ? -0.09 : 0.09,
+          phase: Math.random() * Math.PI * 2,
+          speed: 1.6 + Math.random() * 0.7,
+          flexibility: 0.12 + Math.random() * 0.06
+        });
+      }
+    }
+
+    // --- 8. WOODEN PLANK BRIDGE GENERATOR ---
+    function buildLevelTrack(lvl) {
+      trackObjects.forEach(obj => scene.remove(obj.mesh));
+      coinObjects.forEach(c => scene.remove(c));
+      if (inWorldLevelBanner) scene.remove(inWorldLevelBanner);
+      trackObjects = [];
+      coinObjects = [];
+
+      trackLength = Math.min(600, 190 + lvl * 25);
+      const bridgeWidth = Math.max(3.6, 5.8 - Math.min(2.0, (lvl - 1) * 0.22));
+
+      // Re-populate islands with animated trees along track length
+      buildSandyIslandsAndTrees();
+
+      // Plank Wood Materials matching screenshot
+      const plankMat = new THREE.MeshStandardMaterial({ color: 0xdd883a, roughness: 0.6, metalness: 0.1 });
+      const plankRailMat = new THREE.MeshStandardMaterial({ color: 0x9a501e, roughness: 0.7, metalness: 0.1 });
+      const postMat = new THREE.MeshStandardMaterial({ color: 0x783912, roughness: 0.8 });
+
+      // Build sequential segmented wooden plank bridge
+      let currentZ = 0;
+      let currentX = 0;
+
+      while (currentZ < trackLength) {
+        const segLen = 16.0;
+
+        // Bridge segment group (individual wooden planks like in screenshot!)
+        const segGroup = new THREE.Group();
+
+        // Longitudinal stringer beams underneath
+        const beamGeom = new THREE.BoxGeometry(0.3, 0.4, segLen);
+        const leftBeam = new THREE.Mesh(beamGeom, plankRailMat);
+        leftBeam.position.set(-bridgeWidth / 2 + 0.2, -0.25, segLen / 2);
+        segGroup.add(leftBeam);
+
+        const rightBeam = new THREE.Mesh(beamGeom, plankRailMat);
+        rightBeam.position.set(bridgeWidth / 2 - 0.2, -0.25, segLen / 2);
+        segGroup.add(rightBeam);
+
+        // Cross planks (spaced along segLen)
+        const numPlanks = 14;
+        const plankStep = segLen / numPlanks;
+        for (let p = 0; p < numPlanks; p++) {
+          const plankGeom = new THREE.BoxGeometry(bridgeWidth, 0.16, plankStep * 0.85);
+          const plankMesh = new THREE.Mesh(plankGeom, plankMat);
+          plankMesh.position.set(0, 0, p * plankStep + plankStep / 2);
+          segGroup.add(plankMesh);
+        }
+
+        // Support vertical posts every segment dipping down into water
+        const postGeom = new THREE.CylinderGeometry(0.2, 0.2, 6.0, 6);
+        const leftPost = new THREE.Mesh(postGeom, postMat);
+        leftPost.position.set(-bridgeWidth / 2 + 0.15, -2.8, 1.0);
+        segGroup.add(leftPost);
+
+        const rightPost = new THREE.Mesh(postGeom, postMat);
+        rightPost.position.set(bridgeWidth / 2 - 0.15, -2.8, 1.0);
+        segGroup.add(rightPost);
+
+        segGroup.position.set(currentX, 0, currentZ);
+        scene.add(segGroup);
+
+        trackObjects.push({
+          mesh: segGroup,
+          minX: currentX - bridgeWidth / 2,
+          maxX: currentX + bridgeWidth / 2,
+          minY: 0,
+          minZ: currentZ,
+          maxZ: currentZ + segLen
+        });
+
+        // Floating Gold Coins
+        if (currentZ > 10 && currentZ < trackLength - 20) {
+          const coinGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16);
+          const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.2 });
+          const coin = new THREE.Mesh(coinGeom, coinMat);
+          coin.rotation.x = Math.PI / 2;
+          coin.position.set(currentX + (Math.random() - 0.5) * (bridgeWidth - 1.6), 0.85, currentZ + 8);
+          scene.add(coin);
+          coinObjects.push(coin);
+        }
+
+        currentZ += segLen;
+
+        // Mild turn from level 2 onwards
+        if (lvl >= 2 && currentZ > 30 && Math.random() > 0.45) {
+          currentX = THREE.MathUtils.clamp(currentX + (Math.random() - 0.5) * 2.2, -4.5, 4.5);
+        }
+      }
+
+      // Finish Platform & Arch
+      const archGeom = new THREE.TorusGeometry(3.6, 0.4, 8, 24, Math.PI);
+      const archMat = new THREE.MeshStandardMaterial({ color: 0x38ef7d, emissive: 0x11998e, emissiveIntensity: 0.6 });
+      const arch = new THREE.Mesh(archGeom, archMat);
+      arch.position.set(currentX, 3.0, trackLength);
+      scene.add(arch);
+
+      // In-World 3D Floating "LEVEL X" Billboard Text at start (matches screenshot!)
+      buildInWorldLevelText(lvl);
+    }
+
+    function buildInWorldLevelText(lvl) {
+      const bannerCanvas = document.createElement("canvas");
+      bannerCanvas.width = 512;
+      bannerCanvas.height = 128;
+      const bCtx = bannerCanvas.getContext("2d");
+      bCtx.clearRect(0, 0, 512, 128);
+
+      bCtx.font = "900 80px -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+      bCtx.textAlign = "center";
+      bCtx.textBaseline = "middle";
+
+      // Drop shadow
+      bCtx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      bCtx.fillText(`LEVEL  ${lvl}`, 256 + 4, 64 + 4);
+
+      // Bright white 3D text
+      bCtx.fillStyle = "#ffffff";
+      bCtx.fillText(`LEVEL  ${lvl}`, 256, 64);
+
+      const texture = new THREE.CanvasTexture(bannerCanvas);
+      const bannerMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+      const bannerGeom = new THREE.PlaneGeometry(12, 3);
+      inWorldLevelBanner = new THREE.Mesh(bannerGeom, bannerMat);
+      inWorldLevelBanner.position.set(0, 4.5, 14);
+      scene.add(inWorldLevelBanner);
+    }
+
+    // --- 9. PLAYER BALL & DYNAMIC DROP SHADOW ---
+    function spawnPlayerBall() {
+      if (playerBall) scene.remove(playerBall);
+      playerBall = createBallMesh(gameSave.equippedBall);
+      scene.add(playerBall);
+
+      // Realistic Soft Drop Shadow onto Wooden Planks
+      if (!dropShadowMesh) {
+        const shadowGeom = new THREE.PlaneGeometry(1.8, 1.8);
+        const canvas = document.createElement("canvas");
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+        grad.addColorStop(0, "rgba(0, 0, 0, 0.65)");
+        grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 64, 64);
+
+        const shadowTexture = new THREE.CanvasTexture(canvas);
+        const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false });
+        dropShadowMesh = new THREE.Mesh(shadowGeom, shadowMat);
+        dropShadowMesh.rotation.x = -Math.PI / 2;
+        scene.add(dropShadowMesh);
+      }
+
+      resetPlayerPhysics();
+      updateUIHud();
+    }
+
+    function resetPlayerPhysics() {
+      if (!ballPos && typeof THREE !== "undefined") {
+        ballPos = new THREE.Vector3(0, 1.0, 0);
+        ballVel = new THREE.Vector3(0, 0, 0);
+      } else if (ballPos) {
+        ballPos.set(0, 1.0, 0);
+        ballVel.set(0, 0, 0);
+      }
+      targetSteer = 0;
+      currentSteer = 0;
+      ballSquash = 1.0;
+      ballLeanAngle = 0.0;
+      isGrounded = true;
+      isFallingInHazard = false;
+      hazardTimer = 0;
+      waterBobPhase = 0;
+      if (playerBall) {
+        playerBall.scale.set(1, 1, 1);
+        playerBall.rotation.set(0, 0, 0);
+      }
+    }
+
+    // --- 10. STEERING CONTROLS (BUTTONS ◀ & ▶ AND SMOOTH ANALOG TOUCH/MOUSE DRAG) ---
+    function setupSteeringControls() {
+      const btnLeft = document.getElementById("btn-steer-left");
+      const btnRight = document.getElementById("btn-steer-right");
+
+      let isLeftPressed = false;
+      let isRightPressed = false;
+      let touchStartX = null;
+      let touchCurrentX = null;
+
+      function updateSteerTarget() {
+        if (isLeftPressed && !isRightPressed) {
+          targetSteer = -1.0;
+        } else if (isRightPressed && !isLeftPressed) {
+          targetSteer = 1.0;
+        } else if (touchStartX !== null && touchCurrentX !== null) {
+          const dx = touchCurrentX - touchStartX;
+          const normalized = THREE.MathUtils.clamp(dx / 52.0, -1.0, 1.0);
+          // Progressive power curve for silky precision steering
+          targetSteer = Math.sign(normalized) * Math.pow(Math.abs(normalized), 1.25);
+        } else {
+          targetSteer = 0;
+        }
+      }
+
+      // Reusable multi-input button binder (touch & mouse)
+      const bindBtn = (btn, onPress, onRelease) => {
+        btn.addEventListener("touchstart", (e) => { e.preventDefault(); audio.resume(); onPress(); });
+        btn.addEventListener("touchend", (e) => { e.preventDefault(); onRelease(); });
+        btn.addEventListener("touchcancel", (e) => { e.preventDefault(); onRelease(); });
+        btn.addEventListener("mousedown", (e) => { e.preventDefault(); audio.resume(); onPress(); });
+        btn.addEventListener("mouseup", (e) => { e.preventDefault(); onRelease(); });
+        btn.addEventListener("mouseleave", (e) => { onRelease(); });
+      };
+
+      bindBtn(btnLeft,
+        () => { isLeftPressed = true; btnLeft.classList.add("pressed"); updateSteerTarget(); },
+        () => { isLeftPressed = false; btnLeft.classList.remove("pressed"); updateSteerTarget(); }
+      );
+
+      bindBtn(btnRight,
+        () => { isRightPressed = true; btnRight.classList.add("pressed"); updateSteerTarget(); },
+        () => { isRightPressed = false; btnRight.classList.remove("pressed"); updateSteerTarget(); }
+      );
+
+      // Smooth Touch Drag Steering across screen
+      window.addEventListener("touchstart", (e) => {
+        if (e.target.closest("button") || e.target.closest(".overlay-screen")) return;
+        audio.resume();
+        touchStartX = e.touches[0].clientX;
+        touchCurrentX = touchStartX;
+        updateSteerTarget();
+      }, { passive: true });
+
+      window.addEventListener("touchmove", (e) => {
+        if (touchStartX === null || e.target.closest("button")) return;
+        touchCurrentX = e.touches[0].clientX;
+        updateSteerTarget();
+      }, { passive: true });
+
+      const onTouchEnd = () => {
+        touchStartX = null;
+        touchCurrentX = null;
+        updateSteerTarget();
+      };
+      window.addEventListener("touchend", onTouchEnd, { passive: true });
+      window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+      // Mouse Drag support for emulator & desktop preview
+      let isMouseDown = false;
+      window.addEventListener("mousedown", (e) => {
+        if (e.target.closest("button") || e.target.closest(".overlay-screen")) return;
+        audio.resume();
+        isMouseDown = true;
+        touchStartX = e.clientX;
+        touchCurrentX = touchStartX;
+        updateSteerTarget();
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!isMouseDown || touchStartX === null) return;
+        touchCurrentX = e.clientX;
+        updateSteerTarget();
+      });
+      window.addEventListener("mouseup", () => {
+        isMouseDown = false;
+        onTouchEnd();
+      });
+
+      // Keyboard Controls
+      window.addEventListener("keydown", (e) => {
+        audio.resume();
+        if (["ArrowLeft", "a", "A"].includes(e.key)) isLeftPressed = true;
+        if (["ArrowRight", "d", "D"].includes(e.key)) isRightPressed = true;
+        updateSteerTarget();
+      });
+      window.addEventListener("keyup", (e) => {
+        if (["ArrowLeft", "a", "A"].includes(e.key)) isLeftPressed = false;
+        if (["ArrowRight", "d", "D"].includes(e.key)) isRightPressed = false;
+        updateSteerTarget();
+      });
+    }
+
+    // --- 11. GAME LOOP: WATER PHYSICS, TREE WIND ANIMATION & ULTRA-SMOOTH MOTION ---
+    function gameLoop(now) {
+      requestAnimationFrame(gameLoop);
+
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      const time = now * 0.001;
+
+      // 1. DYNAMIC WATER PHYSICS & WAVE SURFACE RIPPLE PROPAGATION
+      if (waterMesh && waterInitialPositions.length > 0) {
+        // Propagate dynamic ripples
+        for (let r = activeWaterRipples.length - 1; r >= 0; r--) {
+          const rip = activeWaterRipples[r];
+          rip.radius += rip.speed * dt;
+          rip.amplitude *= Math.pow(rip.damping, dt * 60);
+          if (rip.radius > rip.maxRadius || rip.amplitude < 0.02) {
+            activeWaterRipples.splice(r, 1);
+          }
+        }
+
+        const pos = waterMesh.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const orig = waterInitialPositions[i];
+          const waveH = getWaterWaveHeight(orig.worldX, orig.worldZ, time);
+          pos.setZ(i, waveH);
+        }
+        pos.needsUpdate = true;
+        waterMesh.geometry.computeVertexNormals();
+      }
+
+      // 2. PALM TREE & VEGETATION WIND ANIMATION (ORGANIC MULTI-JOINT ELASTIC FLEXION)
+      const windTime = time * 1.25;
+      const globalGust = 1.0 + Math.max(0, Math.sin(windTime * 0.45)) * 0.75 + Math.sin(windTime * 1.7) * 0.25;
+
+      animatedTrees.forEach(t => {
+        const swayTime = windTime * t.speed + t.phase;
+        const windSway = Math.sin(swayTime) * t.flexibility * globalGust;
+        const lateralSway = Math.cos(swayTime * 0.8) * (t.flexibility * 0.55) * globalGust;
+
+        // Trunk elastic bending
+        if (t.trunkSeg2Group) {
+          t.trunkSeg2Group.rotation.z = t.baseTiltZ + windSway * 0.8;
+          t.trunkSeg2Group.rotation.x = lateralSway * 0.5;
+        }
+
+        // Crown swaying with natural harmonic phase delay
+        if (t.crown) {
+          t.crown.rotation.z = windSway * 1.25;
+          t.crown.rotation.x = lateralSway * 0.85;
+        }
+
+        // Individual palm leaf flutter & rustle
+        if (t.leaves) {
+          t.leaves.forEach(l => {
+            const leafWave = Math.sin(time * l.flutterSpeed + l.flutterPhase) * (0.12 * globalGust);
+            const leafTwist = Math.cos(time * (l.flutterSpeed * 1.25) + l.flutterPhase) * (0.07 * globalGust);
+            l.group.rotation.x = l.baseRotX + leafWave;
+            l.group.rotation.z = l.baseRotZ + leafTwist;
+          });
+        }
+
+        // Base tropical fern bush sway
+        if (t.bushGroup) {
+          t.bushGroup.rotation.z = windSway * 0.35;
+        }
+      });
+
+      // 3. 3D WATER SPLASH PARTICLES (DROPLET FOUNTAIN PHYSICS)
+      for (let p = waterSplashParticles.length - 1; p >= 0; p--) {
+        const drop = waterSplashParticles[p];
+        const ud = drop.userData;
+        ud.vy -= 26.0 * dt; // Gravity
+        drop.position.x += ud.vx * dt;
+        drop.position.y += ud.vy * dt;
+        drop.position.z += ud.vz * dt;
+        ud.life -= ud.decay * dt;
+        drop.scale.setScalar(Math.max(0.1, ud.life));
+        drop.material.opacity = Math.max(0, ud.life);
+
+        if (drop.position.y <= -5.5 || ud.life <= 0) {
+          scene.remove(drop);
+          waterSplashParticles.splice(p, 1);
+        }
+      }
+
+      // 4. WATER SPLASH EXPANDING FOAM RINGS
+      for (let s = waterSplashRings.length - 1; s >= 0; s--) {
+        const ring = waterSplashRings[s];
+        const ud = ring.userData;
+        ring.scale.addScalar(dt * ud.expandSpeed);
+        ring.material.opacity -= dt * ud.fadeSpeed;
+        if (ring.material.opacity <= 0) {
+          scene.remove(ring);
+          waterSplashRings.splice(s, 1);
+        }
+      }
+
+      // Shop 3D Preview Animate
+      const shopScreen = document.getElementById("screen-shop");
+      if (shopScreen && shopScreen.classList.contains("active")) {
+        if (previewBallGroup) {
+          previewBallGroup.rotation.y += dt * 1.6;
+          previewBallGroup.rotation.x += dt * 0.5;
+        }
+        if (previewRenderer && previewScene && previewCamera) {
+          try { previewRenderer.render(previewScene, previewCamera); } catch (_) {}
+        }
+      }
+
+      if (!isGameRunning || isPaused) {
+        if (playerBall && !isGameRunning) {
+          playerBall.rotation.y += dt * 0.8;
+          try { if (renderer && scene && camera) renderer.render(scene, camera); } catch (_) {}
+        }
+        return;
+      }
+
+      // 5. ULTRA-SMOOTH BALL PHYSICS & WATER HYDRODYNAMICS
+      updateSmoothPhysics(dt, time);
+
+      // Check Coin pickups
+      checkCoinPickups();
+
+      // Check Victory Condition
+      if (ballPos && ballPos.z >= trackLength && !isFallingInHazard) {
+        triggerVictory();
+      }
+
+      // 6. SILKY SMOOTH CAMERA FOLLOW
+      updateSmoothCamera();
+
+      // Render Scene
+      try {
+        if (renderer && scene && camera) renderer.render(scene, camera);
+      } catch (_) {}
+    }
+
+    function updateSmoothPhysics(dt, time) {
+      if (!ballPos || !ballVel) return;
+
+      const gravity = -26.0;
+      const targetForwardSpeed = 16.0 + Math.min(6.0, gameSave.level * 0.25);
+      const sens = gameSave.soundSettings.sensitivity || 1.0;
+      const maxTurnSpeed = 12.0 * sens;
+
+      // WATER BUOYANCY & HYDRODYNAMIC DRAG PHYSICS
+      if (isFallingInHazard) {
+        hazardTimer += dt;
+        waterBobPhase += dt * 3.8;
+
+        const waterSurfaceY = -5.4 + getWaterWaveHeight(ballPos.x, ballPos.z, time);
+        const ballRadius = 1.0;
+        const depthSubmerged = Math.max(0, (waterSurfaceY + ballRadius) - ballPos.y);
+        const submersionRatio = Math.min(1.0, depthSubmerged / (2.0 * ballRadius));
+
+        if (submersionRatio > 0) {
+          // Archimedes upward buoyancy force counteracts gravity
+          const buoyancyMultiplier = Math.max(0.25, 1.0 - Math.max(0, (hazardTimer - 1.0) * 0.75));
+          const buoyancy = 34.0 * submersionRatio * buoyancyMultiplier;
+          ballVel.y += buoyancy * dt;
+
+          // Fluid resistance rapidly cushions momentum
+          const drag = Math.exp(-4.2 * submersionRatio * dt);
+          ballVel.x *= drag;
+          ballVel.z *= drag;
+          ballVel.y = expDecay(ballVel.y, -2.5, 3.8 * submersionRatio, dt);
+
+          // Add dynamic water ripples while ball bobs on water surface
+          if (Math.random() < 0.25) {
+            addWaterDisturbance(ballPos.x, ballPos.z, 0.45);
+          }
+        } else {
+          ballVel.y += gravity * dt;
+        }
+
+        ballPos.x += ballVel.x * dt;
+        ballPos.y += ballVel.y * dt;
+        ballPos.z += ballVel.z * dt;
+        playerBall.position.copy(ballPos);
+
+        // Underwater rotation dampening
+        playerBall.rotation.x += (ballVel.z / ballRadius) * dt * 0.4;
+        playerBall.rotation.z -= (ballVel.x / ballRadius) * dt * 0.4;
+
+        if (dropShadowMesh) dropShadowMesh.visible = false;
+
+        if (ballPos.y < -11.5 || hazardTimer > 2.8) {
+          triggerGameOver();
+        }
+        return;
+      }
+
+      // ULTRA-SMOOTH FORWARD ACCELERATION & INERTIA (Frame-Rate Independent)
+      ballVel.z = expDecay(ballVel.z, targetForwardSpeed, 5.0, dt);
+
+      // BUTTERY-SMOOTH STEERING RESPONSE (Camera-relative: screen right = -X, screen left = +X)
+      currentSteer = expDecay(currentSteer, targetSteer, 14.0, dt);
+      const targetLateralSpeed = -currentSteer * maxTurnSpeed;
+      ballVel.x = expDecay(ballVel.x, targetLateralSpeed, 12.0, dt);
+
+      // Gravity
+      ballVel.y += gravity * dt;
+
+      // Integrate Position
+      ballPos.x += ballVel.x * dt;
+      ballPos.y += ballVel.y * dt;
+      ballPos.z += ballVel.z * dt;
+
+      // Track Planks Collision Detection & Suspension Landing
+      isGrounded = false;
+      const ballRadius = 1.0;
+
+      for (let i = 0; i < trackObjects.length; i++) {
+        const seg = trackObjects[i];
+        if (
+          ballPos.z >= seg.minZ - ballRadius * 0.8 &&
+          ballPos.z <= seg.maxZ + ballRadius * 0.8 &&
+          ballPos.x >= seg.minX - ballRadius * 0.6 &&
+          ballPos.x <= seg.maxX + ballRadius * 0.6
+        ) {
+          const surfaceY = seg.minY + ballRadius;
+          if (ballPos.y <= surfaceY + 0.35 && ballPos.y >= surfaceY - 1.2) {
+            // Tactile landing compliance & squash
+            if (ballVel.y < -3.5) {
+              audio.playSfx("collision");
+              ballSquash = 0.86;
+            }
+            ballPos.y = expDecay(ballPos.y, surfaceY, 32.0, dt);
+            ballVel.y = 0;
+            isGrounded = true;
+            break;
+          }
+        }
+      }
+
+      // Fall Off Bridge into Water (Triggers Dynamic Water Splash & Particles)
+      if (ballPos.y < -3.6 && !isFallingInHazard) {
+        isFallingInHazard = true;
+        hazardTimer = 0;
+        gameSave.statistics.falls++;
+        audio.playSfx("splash");
+        if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+          window.AndroidBridge.vibrate(50);
+        }
+        spawnWaterSplash(ballPos.x, ballPos.z);
+      }
+
+      // TRUE 3D QUATERNION ROLLING PHYSICS (No gimbal lock or texture slip)
+      playerBall.position.copy(ballPos);
+
+      const rollSpeed = Math.sqrt(ballVel.x * ballVel.x + ballVel.z * ballVel.z);
+      if (rollSpeed > 0.05) {
+        // Axis perpendicular to rolling velocity on the ground plane: (-vz, 0, vx)
+        const rollAxis = new THREE.Vector3(-ballVel.z / rollSpeed, 0, ballVel.x / rollSpeed);
+        const rollAngle = (rollSpeed / ballRadius) * dt;
+        playerBall.rotateOnWorldAxis(rollAxis, rollAngle);
+      }
+
+      // SMOOTH DYNAMIC LEAN / BANKING INTO STEERING TURNS
+      const targetLean = -currentSteer * 0.14;
+      ballLeanAngle = expDecay(ballLeanAngle, targetLean, 10.0, dt);
+      playerBall.rotation.y = ballLeanAngle;
+
+      // SMOOTH SQUASH & STRETCH RECOVERY
+      ballSquash = expDecay(ballSquash, 1.0, 16.0, dt);
+      const stretchXZ = 1.0 + (1.0 - ballSquash) * 0.5;
+      playerBall.scale.set(stretchXZ, ballSquash, stretchXZ);
+
+      // Realistic Soft Drop Shadow on Wooden Planks
+      if (dropShadowMesh) {
+        dropShadowMesh.visible = isGrounded || ballPos.y > -2.0;
+        dropShadowMesh.position.set(ballPos.x, 0.03, ballPos.z);
+        const distFromBridge = Math.max(0, ballPos.y - 1.0);
+        dropShadowMesh.scale.setScalar(Math.max(0.5, 1.0 - distFromBridge * 0.15));
+        dropShadowMesh.material.opacity = Math.max(0.08, 0.65 - distFromBridge * 0.22);
+      }
+
+      // Diamond Ball Chromatic Shifting
+      playerBall.traverse(child => {
+        if (child.userData && child.userData.isDiamond) {
+          const hue = (performance.now() * 0.0006 + ballPos.z * 0.02) % 1;
+          child.material.color.setHSL(hue, 0.85, 0.6);
+        }
+      });
+
+      // Update HUD Progress
+      const progress = THREE.MathUtils.clamp((ballPos.z / trackLength) * 100, 0, 100);
+      document.getElementById("hud-progress-fill").style.width = `${progress}%`;
+    }
+
+    // Complete Water Splash Spawner: Dynamic Ripples, Droplet Fountain Particles & Foam Rings
+    function spawnWaterSplash(x, z) {
+      // 1. Interactive Dynamic Ripples across the Water Mesh Vertices
+      addWaterDisturbance(x, z, 1.5);
+
+      // 2. 3D Water Spray Droplet Particles
+      const dropletMat = new THREE.MeshStandardMaterial({
+        color: 0xe6f9ff,
+        roughness: 0.1,
+        metalness: 0.75,
+        transparent: true,
+        opacity: 0.95
+      });
+      const dropletGeom = new THREE.DodecahedronGeometry(0.22, 0);
+
+      for (let i = 0; i < 28; i++) {
+        const droplet = new THREE.Mesh(dropletGeom, dropletMat.clone());
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.2 + Math.random() * 5.2;
+        droplet.position.set(
+          x + (Math.random() - 0.5) * 0.7,
+          -5.2 + Math.random() * 0.3,
+          z + (Math.random() - 0.5) * 0.7
+        );
+        droplet.userData = {
+          vx: Math.cos(angle) * speed,
+          vy: 8.5 + Math.random() * 7.5,
+          vz: Math.sin(angle) * speed,
+          life: 1.0,
+          decay: 0.9 + Math.random() * 0.7
+        };
+        scene.add(droplet);
+        waterSplashParticles.push(droplet);
+      }
+
+      // 3. Concentric Expanding Foam Ripple Rings
+      for (let i = 0; i < 3; i++) {
+        const ringGeom = new THREE.RingGeometry(0.7 + i * 0.45, 1.25 + i * 0.45, 30);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.88
+        });
+        const ring = new THREE.Mesh(ringGeom, ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(x, -5.25 + i * 0.02, z);
+        ring.userData = {
+          expandSpeed: 4.5 + i * 1.6,
+          fadeSpeed: 0.8 + i * 0.25
+        };
+        scene.add(ring);
+        waterSplashRings.push(ring);
+      }
+    }
+
+    function checkCoinPickups() {
+      if (!ballPos) return;
+      for (let i = coinObjects.length - 1; i >= 0; i--) {
+        const coin = coinObjects[i];
+        coin.rotation.z += 0.06;
+        if (coin.position.distanceTo(ballPos) < 1.6) {
+          scene.remove(coin);
+          coinObjects.splice(i, 1);
+          gameSave.availablePoints += 10;
+          gameSave.totalPoints += 10;
+          audio.playSfx("coin");
+          updateUIHud();
+        }
+      }
+    }
+
+    function updateSmoothCamera() {
+      if (!ballPos) return;
+      const targetCamPos = new THREE.Vector3(
+        ballPos.x * 0.52,
+        ballPos.y + 4.2,
+        ballPos.z - 7.6
+      );
+      camera.position.x = expDecay(camera.position.x, targetCamPos.x, 10.0, 0.016);
+      camera.position.y = expDecay(camera.position.y, targetCamPos.y, 8.0, 0.016);
+      camera.position.z = expDecay(camera.position.z, targetCamPos.z, 14.0, 0.016);
+
+      const lookTarget = new THREE.Vector3(
+        ballPos.x * 0.65,
+        ballPos.y + 0.8,
+        ballPos.z + 5.5
+      );
+      camera.lookAt(lookTarget);
+    }
+
+    // --- 12. VICTORY, REWARD & CONFETTI SYSTEM ---
+    function triggerVictory() {
+      isGameRunning = false;
+      audio.stopBgm();
+      audio.playSfx("victory");
+
+      document.getElementById("hud").style.display = "none";
+      document.getElementById("bottom-steer-controls").style.display = "none";
+
+      const currentLvl = gameSave.level;
+      gameSave.statistics.levelsCompleted++;
+
+      let earnedPoints = 0;
+      const alreadyClaimed = gameSave.claimedLevelRewards.includes(currentLvl);
+
+      if (!alreadyClaimed) {
+        earnedPoints = currentLvl * 100; // L1 = 100, L2 = 200, L3 = 300...
+        gameSave.claimedLevelRewards.push(currentLvl);
+        gameSave.availablePoints += earnedPoints;
+        gameSave.totalPoints += earnedPoints;
+      }
+
+      let newlyUnlocked = false;
+      if (currentLvl === gameSave.highestUnlockedLevel) {
+        gameSave.highestUnlockedLevel++;
+        newlyUnlocked = true;
+      }
+
+      document.getElementById("vic-completed-level").textContent = `Level ${currentLvl}`;
+      document.getElementById("vic-unlock-status").textContent = newlyUnlocked
+        ? `Level ${gameSave.highestUnlockedLevel} Unlocked! 🚀`
+        : `Highest Unlocked: Level ${gameSave.highestUnlockedLevel}`;
+
+      if (alreadyClaimed) {
+        document.getElementById("vic-reward-points").innerHTML = `<span style="color:#9ca3af;">+0 (Reward already claimed)</span>`;
+      } else {
+        document.getElementById("vic-reward-points").textContent = `+${earnedPoints} Points`;
+      }
+
+      document.getElementById("vic-avail-points").textContent = `🪙 ${gameSave.availablePoints}`;
+      document.getElementById("vic-total-points").textContent = `🏆 ${gameSave.totalPoints}`;
+
+      document.getElementById("screen-victory").classList.add("active");
+
+      startConfetti();
+      saveGameData();
+    }
+
+    function triggerGameOver() {
+      isGameRunning = false;
+      audio.stopBgm();
+
+      document.getElementById("hud").style.display = "none";
+      document.getElementById("bottom-steer-controls").style.display = "none";
+      document.getElementById("screen-game-over").classList.add("active");
+
+      saveGameData();
+    }
+
+    // Confetti Animation
+    let confettiParticles = [];
+    let confettiRunning = false;
+
+    function startConfetti() {
+      const cCanvas = document.getElementById("confetti-canvas");
+      if (!cCanvas) return;
+      cCanvas.width = window.innerWidth;
+      cCanvas.height = window.innerHeight;
+      cCanvas.style.display = "block";
+      const ctx = cCanvas.getContext("2d");
+
+      confettiParticles = [];
+      const colors = ["#ffd700", "#38ef7d", "#00f2fe", "#f43f5e", "#a855f7", "#ffffff"];
+      for (let i = 0; i < 90; i++) {
+        confettiParticles.push({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          vx: (Math.random() - 0.5) * 16,
+          vy: (Math.random() - 0.5) * 16 - 4,
+          size: 6 + Math.random() * 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 0.2,
+          life: 1.0
+        });
+      }
+
+      confettiRunning = true;
+      function animateConfetti() {
+        if (!confettiRunning) return;
+        ctx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+
+        let activeCount = 0;
+        confettiParticles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.3;
+          p.rotation += p.vRot;
+          p.life -= 0.012;
+
+          if (p.life > 0) {
+            activeCount++;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
+            ctx.restore();
+          }
+        });
+
+        if (activeCount > 0) requestAnimationFrame(animateConfetti);
+        else stopConfetti();
+      }
+      requestAnimationFrame(animateConfetti);
+    }
+
+    function stopConfetti() {
+      confettiRunning = false;
+      const cCanvas = document.getElementById("confetti-canvas");
+      if (cCanvas) {
+        cCanvas.style.display = "none";
+        const ctx = cCanvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+      }
+    }
+
+    // --- 13. GAME STATE MANAGEMENT ---
+    function startGame() {
+      stopConfetti();
+      isGameRunning = true;
+      isPaused = false;
+      gameSave.statistics.gamesPlayed++;
+
+      document.querySelectorAll(".screen-overlay").forEach(el => el.classList.remove("active"));
+      document.getElementById("hud").style.display = "flex";
+      document.getElementById("bottom-steer-controls").style.display = "flex";
+
+      buildLevelTrack(gameSave.level);
+      spawnPlayerBall();
+      updateUIHud();
+
+      audio.startBgm();
+      saveGameData();
+    }
+
+    function pauseGame() {
+      if (!isGameRunning || isPaused) return;
+      isPaused = true;
+      audio.stopBgm();
+      document.getElementById("screen-paused").classList.add("active");
+    }
+
+    function resumeGame() {
+      if (!isPaused) return;
+      isPaused = false;
+      document.getElementById("screen-paused").classList.remove("active");
+      audio.startBgm();
+    }
+
+    function returnToMainMenu() {
+      stopConfetti();
+      isGameRunning = false;
+      isPaused = false;
+      audio.stopBgm();
+
+      document.querySelectorAll(".screen-overlay").forEach(el => el.classList.remove("active"));
+      document.getElementById("screen-main-menu").classList.add("active");
+      document.getElementById("hud").style.display = "none";
+      document.getElementById("bottom-steer-controls").style.display = "none";
+
+      resetPlayerPhysics();
+      updateUIHud();
+    }
+
+    window.handleAndroidBack = function() {
+      const activeScreens = ["screen-shop", "screen-settings", "screen-confirm-reset"];
+      for (const id of activeScreens) {
+        const el = document.getElementById(id);
+        if (el && el.classList.contains("active")) {
+          el.classList.remove("active");
+          return "true";
+        }
+      }
+      if (isGameRunning && !isPaused) {
+        pauseGame();
+        return "true";
+      }
+      if (isPaused) {
+        resumeGame();
+        return "true";
+      }
+      return "false";
+    };
+
+    // --- 14. UI SYNC & BINDINGS ---
+    function updateUIHud() {
+      const ballDef = SHOP_BALLS.find(b => b.id === gameSave.equippedBall) || SHOP_BALLS[2];
+
+      // HUD exactly matching screenshot
+      document.getElementById("hud-level-title").textContent = `LEVEL ${gameSave.level}`;
+      document.getElementById("hud-coins-val").textContent = `${gameSave.availablePoints}`;
+      document.getElementById("hud-ball-name").textContent = ballDef.name;
+
+      // Menu
+      document.getElementById("mm-current-level").textContent = `${gameSave.level}`;
+      document.getElementById("mm-highest-tag").textContent = `Highest: Level ${gameSave.highestUnlockedLevel}`;
+      document.getElementById("mm-avail-points").textContent = `${gameSave.availablePoints}`;
+      document.getElementById("mm-total-points").textContent = `${gameSave.totalPoints}`;
+
+      document.getElementById("btn-lvl-prev").disabled = gameSave.level <= 1;
+      document.getElementById("btn-lvl-next").disabled = gameSave.level >= gameSave.highestUnlockedLevel;
+
+      // Shop
+      document.getElementById("shop-avail-chip").textContent = `${gameSave.availablePoints}`;
+
+      // Settings Stats
+      document.getElementById("stat-games").textContent = `${gameSave.statistics.gamesPlayed}`;
+      document.getElementById("stat-completed").textContent = `${gameSave.statistics.levelsCompleted}`;
+      document.getElementById("stat-falls").textContent = `${gameSave.statistics.falls}`;
+      document.getElementById("stat-balls").textContent = `${gameSave.purchasedBalls.length} / 10`;
+
+      const sec = gameSave.statistics.timePlayedSeconds;
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      document.getElementById("stat-time").textContent = `${m}m ${s}s`;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast-msg");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+
+    // --- 15. DOM BINDINGS & BOOT ---
+    let appBooted = false;
+    function bootApp() {
+      if (appBooted) return;
+      if (typeof THREE === "undefined") {
+        setTimeout(bootApp, 30);
+        return;
+      }
+      appBooted = true;
+
+      loadSaveData();
+      initGameEngine();
+
+      // Top Right Orange HUD Buttons (Pause, Restart, Sound Mute)
+      document.getElementById("btn-hud-pause").onclick = () => { audio.playSfx("click"); pauseGame(); };
+      document.getElementById("btn-hud-restart").onclick = () => { audio.playSfx("click"); startGame(); };
+      document.getElementById("btn-hud-sound").onclick = () => {
+        audio.playSfx("click");
+        gameSave.soundSettings.musicEnabled = !gameSave.soundSettings.musicEnabled;
+        gameSave.soundSettings.sfxEnabled = gameSave.soundSettings.musicEnabled;
+        saveGameData();
+        audio.updateVolumes();
+        document.getElementById("btn-hud-sound").textContent = gameSave.soundSettings.musicEnabled ? "🔊" : "🔇";
+        if (!gameSave.soundSettings.musicEnabled) audio.stopBgm();
+        else if (isGameRunning && !isPaused) audio.startBgm();
+      };
+
+      // Main Menu Controls
+      document.getElementById("btn-lvl-prev").onclick = () => {
+        if (gameSave.level > 1) {
+          gameSave.level--;
+          saveGameData();
+          audio.playSfx("click");
+          updateUIHud();
+        }
+      };
+
+      document.getElementById("btn-lvl-next").onclick = () => {
+        if (gameSave.level < gameSave.highestUnlockedLevel) {
+          gameSave.level++;
+          saveGameData();
+          audio.playSfx("click");
+          updateUIHud();
+        }
+      };
+
+      document.getElementById("btn-play").onclick = () => { audio.resume(); startGame(); };
+      document.getElementById("btn-resume").onclick = () => { audio.playSfx("click"); resumeGame(); };
+      document.getElementById("btn-restart").onclick = () => { audio.playSfx("click"); startGame(); };
+      document.getElementById("btn-pause-menu").onclick = () => { audio.playSfx("click"); returnToMainMenu(); };
+      document.getElementById("btn-try-again").onclick = () => { audio.playSfx("click"); startGame(); };
+      document.getElementById("btn-go-menu").onclick = () => { audio.playSfx("click"); returnToMainMenu(); };
+
+      // Victory Buttons
+      document.getElementById("btn-vic-next").onclick = () => {
+        audio.playSfx("click");
+        gameSave.level = gameSave.highestUnlockedLevel;
+        saveGameData();
+        startGame();
+      };
+      document.getElementById("btn-vic-shop").onclick = () => {
+        audio.playSfx("click");
+        initShopPreview();
+        setCarouselBall(gameSave.equippedBall);
+        document.getElementById("screen-shop").classList.add("active");
+      };
+      document.getElementById("btn-vic-menu").onclick = () => {
+        audio.playSfx("click");
+        returnToMainMenu();
+      };
+
+      // Shop Modal
+      document.getElementById("btn-open-shop").onclick = () => {
+        audio.resume();
+        audio.playSfx("click");
+        initShopPreview();
+        setCarouselBall(gameSave.equippedBall);
+        document.getElementById("screen-shop").classList.add("active");
+      };
+
+      document.getElementById("btn-close-shop").onclick = () => {
+        audio.playSfx("click");
+        document.getElementById("screen-shop").classList.remove("active");
+      };
+
+      document.getElementById("btn-shop-prev").onclick = () => {
+        audio.playSfx("click");
+        viewingBallIndex = (viewingBallIndex - 1 + SHOP_BALLS.length) % SHOP_BALLS.length;
+        setCarouselBall(SHOP_BALLS[viewingBallIndex].id);
+      };
+
+      document.getElementById("btn-shop-next").onclick = () => {
+        audio.playSfx("click");
+        viewingBallIndex = (viewingBallIndex + 1) % SHOP_BALLS.length;
+        setCarouselBall(SHOP_BALLS[viewingBallIndex].id);
+      };
+
+      // Settings Modal
+      document.getElementById("btn-open-settings").onclick = () => {
+        audio.resume();
+        audio.playSfx("click");
+        document.getElementById("toggle-music").checked = gameSave.soundSettings.musicEnabled;
+        document.getElementById("toggle-sfx").checked = gameSave.soundSettings.sfxEnabled;
+        document.getElementById("slider-music").value = gameSave.soundSettings.musicVolume;
+        document.getElementById("slider-sfx").value = gameSave.soundSettings.sfxVolume;
+        document.getElementById("slider-sens").value = gameSave.soundSettings.sensitivity;
+        document.getElementById("sens-label").textContent = `${gameSave.soundSettings.sensitivity.toFixed(1)}x`;
+        updateUIHud();
+        document.getElementById("screen-settings").classList.add("active");
+      };
+
+      document.getElementById("btn-close-settings").onclick = () => {
+        audio.playSfx("click");
+        document.getElementById("screen-settings").classList.remove("active");
+      };
+
+      document.getElementById("toggle-music").onchange = (e) => {
+        gameSave.soundSettings.musicEnabled = e.target.checked;
+        saveGameData();
+        audio.updateVolumes();
+        if (!gameSave.soundSettings.musicEnabled) audio.stopBgm();
+        else if (isGameRunning && !isPaused) audio.startBgm();
+      };
+
+      document.getElementById("toggle-sfx").onchange = (e) => {
+        gameSave.soundSettings.sfxEnabled = e.target.checked;
+        saveGameData();
+        audio.updateVolumes();
+      };
+
+      document.getElementById("slider-music").oninput = (e) => {
+        gameSave.soundSettings.musicVolume = parseFloat(e.target.value);
+        saveGameData();
+        audio.updateVolumes();
+      };
+
+      document.getElementById("slider-sfx").oninput = (e) => {
+        gameSave.soundSettings.sfxVolume = parseFloat(e.target.value);
+        saveGameData();
+        audio.updateVolumes();
+      };
+
+      document.getElementById("slider-sens").oninput = (e) => {
+        gameSave.soundSettings.sensitivity = parseFloat(e.target.value);
+        document.getElementById("sens-label").textContent = `${gameSave.soundSettings.sensitivity.toFixed(1)}x`;
+        saveGameData();
+      };
+
+      // Reset Modal
+      const promptReset = () => {
+        audio.playSfx("click");
+        document.getElementById("screen-confirm-reset").classList.add("active");
+      };
+      document.getElementById("btn-menu-reset").onclick = promptReset;
+      document.getElementById("btn-settings-reset").onclick = promptReset;
+
+      document.getElementById("btn-cancel-reset").onclick = () => {
+        audio.playSfx("click");
+        document.getElementById("screen-confirm-reset").classList.remove("active");
+      };
+
+      document.getElementById("btn-confirm-reset").onclick = () => {
+        resetAllGameData();
+        document.getElementById("screen-confirm-reset").classList.remove("active");
+        document.getElementById("screen-settings").classList.remove("active");
+      };
+
+      updateUIHud();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bootApp);
+    } else {
+      bootApp();
+    }
+  </script>
+</body>
+</html>
