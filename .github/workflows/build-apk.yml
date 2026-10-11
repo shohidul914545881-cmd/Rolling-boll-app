@@ -175,21 +175,24 @@ jobs:
           TAG_NAME="debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}"
           RELEASE_TITLE="Debug APK Build #${{ github.run_number }}"
           
-          RELEASE_NOTES="### Automated Debug APK Build
-
-- **Build Source**: Automatically built by GitHub Actions
-- **Run Number**: ${{ github.run_number }}
-- **Run Attempt**: ${{ github.run_attempt }}
-- **Commit SHA**: \`${{ github.sha }}\`
-- **Release Asset**: \`${ASSET_NAME}\`
-
-> [!NOTE]
-> This APK is an automated debug build intended exclusively for testing and development.
-> It is signed with a temporary Android debug keystore and is not a Play Store production release."
+          NOTES_FILE=$(mktemp "/tmp/release-notes-XXXXXX.md")
+          {
+            echo "### Automated Debug APK Build"
+            echo ""
+            echo "- **Build Source**: Automatically built by GitHub Actions"
+            echo "- **Run Number**: ${{ github.run_number }}"
+            echo "- **Run Attempt**: ${{ github.run_attempt }}"
+            echo "- **Commit SHA**: \`${{ github.sha }}\`"
+            echo "- **Release Asset**: \`$ASSET_NAME\`"
+            echo ""
+            echo "> [!NOTE]"
+            echo "> This APK is an automated debug build intended exclusively for testing and development."
+            echo "> It is signed with a temporary Android debug keystore and is not a Play Store production release."
+          } > "$NOTES_FILE"
           
           gh release create "$TAG_NAME" "$ASSET_PATH#$ASSET_NAME" \
             --title "$RELEASE_TITLE" \
-            --notes "$RELEASE_NOTES" \
+            --notes-file "$NOTES_FILE" \
             --target "${{ github.sha }}" \
             --latest
 
