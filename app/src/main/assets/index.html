@@ -969,123 +969,129 @@
         if (!gameSave.soundSettings.sfxEnabled) return;
         this.resume();
         if (!this.ctx) return;
-        const t = this.ctx.currentTime;
+        try {
+          const t = this.ctx.currentTime;
 
-        if (window.AndroidBridge && window.AndroidBridge.vibrate) {
-          if (type === "collision") window.AndroidBridge.vibrate(15);
-          else if (type === "splash" || type === "fall") window.AndroidBridge.vibrate(45);
-          else if (type === "victory") window.AndroidBridge.vibrate(80);
-        }
+          if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+            if (type === "collision") window.AndroidBridge.vibrate(15);
+            else if (type === "splash" || type === "fall") window.AndroidBridge.vibrate(45);
+            else if (type === "victory") window.AndroidBridge.vibrate(80);
+          }
 
-        switch (type) {
-          case "coin": {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(987.77, t);
-            osc.frequency.setValueAtTime(1318.51, t + 0.08);
-            gain.gain.setValueAtTime(0.25, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-            osc.connect(gain);
-            gain.connect(this.sfxGain);
-            osc.start(t);
-            osc.stop(t + 0.25);
-            break;
-          }
-          case "collision": {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(130, t);
-            osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
-            gain.gain.setValueAtTime(0.35, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.connect(gain);
-            gain.connect(this.sfxGain);
-            osc.start(t);
-            osc.stop(t + 0.1);
-            break;
-          }
-          case "splash": {
-            const bufferSize = Math.floor(this.ctx.sampleRate * 0.5);
-            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.14));
-            }
-            const noise = this.ctx.createBufferSource();
-            noise.buffer = buffer;
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = "lowpass";
-            filter.frequency.setValueAtTime(1100, t);
-            filter.frequency.exponentialRampToValueAtTime(140, t + 0.48);
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.65, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.48);
-            noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.sfxGain);
-            noise.start(t);
-
-            // Bubbly water bloop oscillation
-            const osc = this.ctx.createOscillator();
-            const oscGain = this.ctx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(130, t);
-            osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
-            osc.frequency.exponentialRampToValueAtTime(80, t + 0.35);
-            oscGain.gain.setValueAtTime(0.4, t);
-            oscGain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
-            osc.connect(oscGain);
-            oscGain.connect(this.sfxGain);
-            osc.start(t);
-            osc.stop(t + 0.35);
-            break;
-          }
-          case "victory": {
-            const notes = [523.25, 659.25, 783.99, 1046.50];
-            notes.forEach((freq, idx) => {
+          switch (type) {
+            case "coin": {
               const osc = this.ctx.createOscillator();
               const gain = this.ctx.createGain();
               osc.type = "sine";
-              osc.frequency.setValueAtTime(freq, t + idx * 0.1);
-              gain.gain.setValueAtTime(0.3, t + idx * 0.1);
-              gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.1 + 0.45);
+              osc.frequency.setValueAtTime(987.77, t);
+              osc.frequency.setValueAtTime(1318.51, t + 0.08);
+              gain.gain.setValueAtTime(0.25, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
               osc.connect(gain);
               gain.connect(this.sfxGain);
-              osc.start(t + idx * 0.1);
-              osc.stop(t + idx * 0.1 + 0.45);
-            });
-            break;
+              osc.start(t);
+              osc.stop(t + 0.25);
+              break;
+            }
+            case "collision": {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = "triangle";
+              osc.frequency.setValueAtTime(130, t);
+              osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+              gain.gain.setValueAtTime(0.35, t);
+              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+              osc.connect(gain);
+              gain.connect(this.sfxGain);
+              osc.start(t);
+              osc.stop(t + 0.1);
+              break;
+            }
+            case "splash": {
+              const bufferSize = Math.floor(this.ctx.sampleRate * 0.5);
+              const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+              const data = buffer.getChannelData(0);
+              for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.14));
+              }
+              const noise = this.ctx.createBufferSource();
+              noise.buffer = buffer;
+              const filter = this.ctx.createBiquadFilter ? this.ctx.createBiquadFilter() : null;
+              const gain = this.ctx.createGain();
+              gain.gain.setValueAtTime(0.65, t);
+              gain.gain.exponentialRampToValueAtTime(0.01, t + 0.48);
+              if (filter) {
+                filter.type = "lowpass";
+                filter.frequency.setValueAtTime(1100, t);
+                filter.frequency.exponentialRampToValueAtTime(140, t + 0.48);
+                noise.connect(filter);
+                filter.connect(gain);
+              } else {
+                noise.connect(gain);
+              }
+              gain.connect(this.sfxGain);
+              noise.start(t);
+
+              // Bubbly water bloop oscillation
+              const osc = this.ctx.createOscillator();
+              const oscGain = this.ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(130, t);
+              osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
+              osc.frequency.exponentialRampToValueAtTime(80, t + 0.35);
+              oscGain.gain.setValueAtTime(0.4, t);
+              oscGain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+              osc.connect(oscGain);
+              oscGain.connect(this.sfxGain);
+              osc.start(t);
+              osc.stop(t + 0.35);
+              break;
+            }
+            case "victory": {
+              const notes = [523.25, 659.25, 783.99, 1046.50];
+              notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, t + idx * 0.1);
+                gain.gain.setValueAtTime(0.3, t + idx * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.1 + 0.45);
+                osc.connect(gain);
+                gain.connect(this.sfxGain);
+                osc.start(t + idx * 0.1);
+                osc.stop(t + idx * 0.1 + 0.45);
+              });
+              break;
+            }
+            case "buy": {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = "triangle";
+              osc.frequency.setValueAtTime(800, t);
+              osc.frequency.exponentialRampToValueAtTime(1600, t + 0.2);
+              gain.gain.setValueAtTime(0.3, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+              osc.connect(gain);
+              gain.connect(this.sfxGain);
+              osc.start(t);
+              osc.stop(t + 0.25);
+              break;
+            }
+            case "click": {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(650, t);
+              gain.gain.setValueAtTime(0.15, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+              osc.connect(gain);
+              gain.connect(this.sfxGain);
+              osc.start(t);
+              osc.stop(t + 0.05);
+              break;
+            }
           }
-          case "buy": {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(800, t);
-            osc.frequency.exponentialRampToValueAtTime(1600, t + 0.2);
-            gain.gain.setValueAtTime(0.3, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-            osc.connect(gain);
-            gain.connect(this.sfxGain);
-            osc.start(t);
-            osc.stop(t + 0.25);
-            break;
-          }
-          case "click": {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(650, t);
-            gain.gain.setValueAtTime(0.15, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-            osc.connect(gain);
-            gain.connect(this.sfxGain);
-            osc.start(t);
-            osc.stop(t + 0.05);
-            break;
-          }
-        }
+        } catch (_) {}
       }
 
       startBgm() {
@@ -1235,8 +1241,13 @@
       try {
         previewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "default" });
       } catch (_) {
-        previewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+        try {
+          previewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "low-power" });
+        } catch (e) {
+          console.warn("Shop preview WebGL not available", e);
+        }
       }
+      if (!previewRenderer) return;
       previewRenderer.setSize(width, height);
       previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 
@@ -1353,7 +1364,17 @@
     let islandObjects = [];
     let trackObjects = [];
     let coinObjects = [];
+    let obstacleObjects = [];
+    let coinSparkleParticles = [];
     let inWorldLevelBanner = null;
+    let seabedMesh = null;
+    let coinFaceMaterial = null;
+    let coinRimMaterial = null;
+    let coinShadowMat = null;
+    let coinGlintTexture = null;
+    let coinSharedTexture = null;
+    let coinSharedBump = null;
+    let coinRimTexture = null;
 
     // Smooth Physics State
     let ballPos = null;
@@ -1417,6 +1438,17 @@
 
     function initGameEngine() {
       const canvas = document.getElementById("game-canvas");
+      if (!canvas) return;
+
+      canvas.addEventListener("webglcontextlost", function (e) {
+        e.preventDefault();
+        console.warn("WebGL context lost - preventing crash");
+      }, false);
+
+      canvas.addEventListener("webglcontextrestored", function () {
+        console.info("WebGL context restored");
+      }, false);
+
       try {
         renderer = new THREE.WebGLRenderer({
           canvas: canvas,
@@ -1428,7 +1460,18 @@
           stencil: false
         });
       } catch (_) {
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
+        try {
+          renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: false,
+            powerPreference: "low-power",
+            failIfMajorPerformanceCaveat: false,
+            alpha: false,
+            depth: true
+          });
+        } catch (e) {
+          console.error("WebGLRenderer fallback failed:", e);
+        }
       }
       if (!renderer) return;
 
@@ -1470,9 +1513,11 @@
       }
     }
 
-    // --- 7. WATER WORLD, ANIMATED PALM TREES & ISLANDS ---
+    // --- 7. CRYSTAL-CLEAR WATER WORLD, ANIMATED PALM TREES & ISLANDS ---
     function buildWaterAndTropicalWorld() {
       // Clear scenery
+      if (seabedMesh) scene.remove(seabedMesh);
+      if (waterMesh) scene.remove(waterMesh);
       animatedTrees = [];
       waterSplashRings = [];
       waterSplashParticles = [];
@@ -1480,13 +1525,13 @@
 
       // Sky & Warm Fog matching screenshot
       scene.background = new THREE.Color(0x7ed6fb);
-      scene.fog = new THREE.FogExp2(0xb5e8fc, 0.012);
+      scene.fog = new THREE.FogExp2(0xb5e8fc, 0.011);
 
-      const ambLight = new THREE.AmbientLight(0xffffff, 0.95);
+      const ambLight = new THREE.AmbientLight(0xffffff, 0.96);
       scene.add(ambLight);
 
-      const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.35);
-      sunLight.position.set(40, 80, -30);
+      const sunLight = new THREE.DirectionalLight(0xfffae8, 1.4);
+      sunLight.position.set(45, 85, -35);
       scene.add(sunLight);
 
       // Distant Low-Poly Green Mountains
@@ -1506,15 +1551,60 @@
         scene.add(mtn);
       });
 
-      // Animated Water Mesh with Ripple Vertices
-      const waterGeom = new THREE.PlaneGeometry(360, 850, 42, 60);
+      // 1. Crystal-Clear Seabed beneath the water surface
+      const seabedGeom = new THREE.PlaneGeometry(400, 950, 20, 36);
+      const sbCanvas = document.createElement("canvas");
+      sbCanvas.width = 512; sbCanvas.height = 512;
+      const sbCtx = sbCanvas.getContext("2d");
+      sbCtx.fillStyle = "#edd298";
+      sbCtx.fillRect(0, 0, 512, 512);
+
+      // Sandy dunes and rippled underwater ocean floor
+      for (let y = 0; y < 512; y += 16) {
+        sbCtx.lineWidth = 5;
+        sbCtx.strokeStyle = (y % 32 === 0) ? "rgba(195, 155, 90, 0.32)" : "rgba(255, 248, 200, 0.42)";
+        sbCtx.beginPath();
+        sbCtx.moveTo(0, y);
+        for (let x = 0; x <= 512; x += 32) {
+          sbCtx.quadraticCurveTo(x + 16, y + Math.sin(x * 0.05) * 6, x + 32, y);
+        }
+        sbCtx.stroke();
+      }
+      // Reef and coral depth patches
+      for (let i = 0; i < 22; i++) {
+        const cx = (i * 73) % 512, cy = (i * 97) % 512, cr = 18 + (i % 5) * 6;
+        const cGrad = sbCtx.createRadialGradient(cx, cy, 2, cx, cy, cr);
+        cGrad.addColorStop(0, "rgba(35, 145, 135, 0.38)");
+        cGrad.addColorStop(1, "rgba(35, 145, 135, 0)");
+        sbCtx.fillStyle = cGrad;
+        sbCtx.beginPath();
+        sbCtx.arc(cx, cy, cr, 0, Math.PI * 2);
+        sbCtx.fill();
+      }
+      const seabedTex = new THREE.CanvasTexture(sbCanvas);
+      seabedTex.wrapS = THREE.RepeatWrapping;
+      seabedTex.wrapT = THREE.RepeatWrapping;
+      seabedTex.repeat.set(4, 8);
+
+      const seabedMat = new THREE.MeshStandardMaterial({
+        map: seabedTex,
+        roughness: 0.92,
+        metalness: 0.04
+      });
+      seabedMesh = new THREE.Mesh(seabedGeom, seabedMat);
+      seabedMesh.rotation.x = -Math.PI / 2;
+      seabedMesh.position.set(0, -8.2, 320);
+      scene.add(seabedMesh);
+
+      // 2. Crystal-Clear Translucent Turquoise Water Surface Mesh
+      const waterGeom = new THREE.PlaneGeometry(380, 920, 24, 38);
       const waterMat = new THREE.MeshStandardMaterial({
-        color: 0x00d2f2, // Turquoise water like in screenshot
-        roughness: 0.1,
-        metalness: 0.45,
+        color: 0x00d4eb, // Crystal-clear tropical Caribbean cyan-turquoise
+        roughness: 0.04, // Mirror-smooth wet sheen
+        metalness: 0.28,
         transparent: true,
-        opacity: 0.88,
-        flatShading: true
+        opacity: 0.72, // Crystal clear! Sandy bottom and foundations visible beneath
+        flatShading: false
       });
       waterMesh = new THREE.Mesh(waterGeom, waterMat);
       waterMesh.rotation.x = -Math.PI / 2;
@@ -1665,16 +1755,713 @@
       }
     }
 
-    // --- 8. WOODEN PLANK BRIDGE GENERATOR ---
+    // --- 8. REALISTIC GOLD COINS & PROCEDURAL MATERIALS ---
+    function initCoinMaterials() {
+      if (coinFaceMaterial) return;
+
+      const cx = 256, cy = 256;
+
+      // 1. High-resolution 512x512 24K Gold Coin Diffuse Map
+      const cCanvas = document.createElement("canvas");
+      cCanvas.width = 512; cCanvas.height = 512;
+      const ctx = cCanvas.getContext("2d");
+
+      // Deep rich 24K gold radial gradient
+      const baseGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 256);
+      baseGrad.addColorStop(0, "#fff9c4"); // bright highlight center
+      baseGrad.addColorStop(0.28, "#fcc01a"); // 24K gold
+      baseGrad.addColorStop(0.68, "#e59a00"); // deep amber gold
+      baseGrad.addColorStop(0.86, "#ffda66"); // raised bevel rim highlight
+      baseGrad.addColorStop(0.95, "#b86f00"); // milled rim shadow
+      baseGrad.addColorStop(1, "#7c4400"); // edge border
+      ctx.fillStyle = baseGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 256, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Subtle circular brushed micro-grooves for authentic metallic sheen
+      for (let r = 24; r < 240; r += 4) {
+        ctx.strokeStyle = (r % 8 === 0) ? "rgba(255, 255, 255, 0.12)" : "rgba(110, 60, 0, 0.08)";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Outer Milled / Serrated Edge Knurling (72 radial golden teeth)
+      ctx.save();
+      ctx.translate(cx, cy);
+      for (let i = 0; i < 72; i++) {
+        ctx.rotate((Math.PI * 2) / 72);
+        ctx.fillStyle = (i % 2 === 0) ? "#fff0a0" : "#8c5000";
+        ctx.fillRect(-2, -250, 4, 22);
+      }
+      ctx.restore();
+
+      // Raised beveled border ring at radius 220
+      ctx.beginPath();
+      ctx.arc(cx, cy, 222, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 216, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(100, 50, 0, 0.35)";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Inner beaded ring: 24 golden studs at radius 176
+      for (let i = 0; i < 24; i++) {
+        const ang = (i / 24) * Math.PI * 2;
+        const bx = cx + Math.cos(ang) * 176;
+        const by = cy + Math.sin(ang) * 176;
+        const sGrad = ctx.createRadialGradient(bx - 2, by - 2, 1, bx, by, 7);
+        sGrad.addColorStop(0, "#ffffff");
+        sGrad.addColorStop(0.4, "#fed330");
+        sGrad.addColorStop(1, "#8d5300");
+        ctx.fillStyle = sGrad;
+        ctx.beginPath();
+        ctx.arc(bx, by, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Inner recessed medal field
+      const innerGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, 150);
+      innerGrad.addColorStop(0, "rgba(255, 240, 160, 0.3)");
+      innerGrad.addColorStop(1, "rgba(140, 75, 0, 0.25)");
+      ctx.fillStyle = innerGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 152, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Center Embossed 5-Pointed Star Relief
+      drawEmbossedStar(ctx, cx, cy, 5, 115, 52);
+      coinSharedTexture = new THREE.CanvasTexture(cCanvas);
+
+      // 2. High-contrast Bump Map (Greyscale)
+      const bCanvas = document.createElement("canvas");
+      bCanvas.width = 512; bCanvas.height = 512;
+      const bCtx = bCanvas.getContext("2d");
+      bCtx.fillStyle = "#808080";
+      bCtx.fillRect(0, 0, 512, 512);
+
+      // Raised milled rim
+      bCtx.save();
+      bCtx.translate(cx, cy);
+      for (let i = 0; i < 72; i++) {
+        bCtx.rotate((Math.PI * 2) / 72);
+        bCtx.fillStyle = (i % 2 === 0) ? "#ffffff" : "#404040";
+        bCtx.fillRect(-2, -250, 4, 22);
+      }
+      bCtx.restore();
+
+      // Raised bevel borders
+      bCtx.strokeStyle = "#ffffff";
+      bCtx.lineWidth = 8;
+      bCtx.beginPath();
+      bCtx.arc(cx, cy, 220, 0, Math.PI * 2);
+      bCtx.stroke();
+
+      bCtx.strokeStyle = "#303030";
+      bCtx.lineWidth = 5;
+      bCtx.beginPath();
+      bCtx.arc(cx, cy, 214, 0, Math.PI * 2);
+      bCtx.stroke();
+
+      // Beaded studs bump
+      for (let i = 0; i < 24; i++) {
+        const ang = (i / 24) * Math.PI * 2;
+        const bx = cx + Math.cos(ang) * 176;
+        const by = cy + Math.sin(ang) * 176;
+        bCtx.fillStyle = "#ffffff";
+        bCtx.beginPath();
+        bCtx.arc(bx, by, 6.5, 0, Math.PI * 2);
+        bCtx.fill();
+      }
+
+      // Star bump
+      drawEmbossedStarBump(bCtx, cx, cy, 5, 115, 52);
+      coinSharedBump = new THREE.CanvasTexture(bCanvas);
+
+      // 3. Milled side rim texture
+      const rCanvas = document.createElement("canvas");
+      rCanvas.width = 256; rCanvas.height = 32;
+      const rCtx = rCanvas.getContext("2d");
+      for (let x = 0; x < 256; x += 4) {
+        rCtx.fillStyle = (x % 8 === 0) ? "#ffe680" : "#a66300";
+        rCtx.fillRect(x, 0, 4, 32);
+      }
+      coinRimTexture = new THREE.CanvasTexture(rCanvas);
+      coinRimTexture.wrapS = THREE.RepeatWrapping;
+      coinRimTexture.repeat.set(16, 1);
+
+      // 4. Soft Contact Drop Shadow Texture
+      const shCanvas = document.createElement("canvas");
+      shCanvas.width = 64; shCanvas.height = 64;
+      const shCtx = shCanvas.getContext("2d");
+      const shGrad = shCtx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      shGrad.addColorStop(0, "rgba(25, 12, 0, 0.45)");
+      shGrad.addColorStop(1, "rgba(25, 12, 0, 0)");
+      shCtx.fillStyle = shGrad;
+      shCtx.fillRect(0, 0, 64, 64);
+      const coinShadowTex = new THREE.CanvasTexture(shCanvas);
+      coinShadowMat = new THREE.MeshBasicMaterial({ map: coinShadowTex, transparent: true, depthWrite: false });
+
+      // 5. Specular Glint Star Sprite Canvas
+      const gCanvas = document.createElement("canvas");
+      gCanvas.width = 64; gCanvas.height = 64;
+      const gCtx = gCanvas.getContext("2d");
+      gCtx.translate(32, 32);
+      const gGrad = gCtx.createRadialGradient(0, 0, 1, 0, 0, 28);
+      gGrad.addColorStop(0, "rgba(255, 255, 255, 1)");
+      gGrad.addColorStop(0.3, "rgba(255, 240, 180, 0.7)");
+      gGrad.addColorStop(1, "rgba(255, 220, 100, 0)");
+      gCtx.fillStyle = gGrad;
+      gCtx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        gCtx.rotate(Math.PI / 2);
+        gCtx.moveTo(0, 0);
+        gCtx.quadraticCurveTo(3, 10, 28, 0);
+        gCtx.quadraticCurveTo(3, -10, 0, 0);
+      }
+      gCtx.fill();
+      coinGlintTexture = new THREE.CanvasTexture(gCanvas);
+
+      // Materials with realistic metalness and roughness
+      coinFaceMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffdb58,
+        map: coinSharedTexture,
+        bumpMap: coinSharedBump,
+        bumpScale: 0.045,
+        metalness: 0.94,
+        roughness: 0.17
+      });
+
+      coinRimMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5aa18,
+        map: coinRimTexture,
+        bumpMap: coinRimTexture,
+        bumpScale: 0.04,
+        metalness: 0.92,
+        roughness: 0.22
+      });
+    }
+
+    function drawEmbossedStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+      const step = Math.PI / spikes;
+      // Shadow
+      ctx.save();
+      ctx.translate(cx + 3, cy + 3);
+      ctx.beginPath();
+      for (let i = 0; i < spikes * 2; i++) {
+        const r = (i % 2 === 0) ? outerRadius : innerRadius;
+        const a = i * step - Math.PI / 2;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(70, 35, 0, 0.4)";
+      ctx.fill();
+      ctx.restore();
+
+      // Faceted 3D Star: Draw triangular facets from center
+      for (let i = 0; i < spikes * 2; i++) {
+        const a1 = i * step - Math.PI / 2;
+        const a2 = (i + 1) * step - Math.PI / 2;
+        const r1 = (i % 2 === 0) ? outerRadius : innerRadius;
+        const r2 = ((i + 1) % 2 === 0) ? outerRadius : innerRadius;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a1) * r1, cy + Math.sin(a1) * r1);
+        ctx.lineTo(cx + Math.cos(a2) * r2, cy + Math.sin(a2) * r2);
+        ctx.closePath();
+        ctx.fillStyle = (i % 2 === 0) ? "#fffbd2" : "#be7b00";
+        ctx.fill();
+      }
+    }
+
+    function drawEmbossedStarBump(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+      const step = Math.PI / spikes;
+      for (let i = 0; i < spikes * 2; i++) {
+        const a1 = i * step - Math.PI / 2;
+        const a2 = (i + 1) * step - Math.PI / 2;
+        const r1 = (i % 2 === 0) ? outerRadius : innerRadius;
+        const r2 = ((i + 1) % 2 === 0) ? outerRadius : innerRadius;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a1) * r1, cy + Math.sin(a1) * r1);
+        ctx.lineTo(cx + Math.cos(a2) * r2, cy + Math.sin(a2) * r2);
+        ctx.closePath();
+        ctx.fillStyle = (i % 2 === 0) ? "#ffffff" : "#a0a0a0";
+        ctx.fill();
+      }
+    }
+
+    function createRealisticCoin(x, y, z) {
+      initCoinMaterials();
+      const coinGroup = new THREE.Group();
+
+      // 1. High-poly Cylinder with chamfered rim
+      const cylGeom = new THREE.CylinderGeometry(0.52, 0.52, 0.14, 32);
+      const coinMesh = new THREE.Mesh(cylGeom, [coinRimMaterial, coinFaceMaterial, coinFaceMaterial]);
+      coinGroup.add(coinMesh);
+
+      // 2. Beveled chamfer rings (top & bottom toruses for physical specular highlights)
+      const bevelGeom = new THREE.TorusGeometry(0.51, 0.03, 8, 32);
+      const topBevel = new THREE.Mesh(bevelGeom, coinRimMaterial);
+      topBevel.rotation.x = Math.PI / 2;
+      topBevel.position.y = 0.07;
+      coinGroup.add(topBevel);
+
+      const bottomBevel = new THREE.Mesh(bevelGeom, coinRimMaterial);
+      bottomBevel.rotation.x = Math.PI / 2;
+      bottomBevel.position.y = -0.07;
+      coinGroup.add(bottomBevel);
+
+      // 3. Contact shadow on bridge floor
+      const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.0), coinShadowMat);
+      shadowMesh.rotation.x = -Math.PI / 2;
+      shadowMesh.position.y = -0.78;
+      coinGroup.add(shadowMesh);
+
+      // 4. Specular glint star flare on the rim
+      const glintMat = new THREE.MeshBasicMaterial({
+        map: coinGlintTexture,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const glintMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.48), glintMat);
+      glintMesh.position.set(0.36, 0.08, 0);
+      coinGroup.add(glintMesh);
+
+      // Stand upright on bridge
+      coinGroup.rotation.x = Math.PI / 2;
+      coinGroup.position.set(x, y, z);
+
+      coinGroup.userData = {
+        baseY: y,
+        phase: Math.random() * Math.PI * 2,
+        glint: glintMesh,
+        glintMat: glintMat,
+        shadow: shadowMesh
+      };
+
+      scene.add(coinGroup);
+      coinObjects.push(coinGroup);
+      return coinGroup;
+    }
+
+    function updateCoins(dt, time) {
+      for (let i = 0; i < coinObjects.length; i++) {
+        const coin = coinObjects[i];
+        const ud = coin.userData;
+        // Continuous smooth spin
+        coin.rotation.z += dt * 3.2;
+
+        // Gentle floating bob
+        if (ud) {
+          coin.position.y = ud.baseY + Math.sin(time * 3.6 + ud.phase) * 0.12;
+
+          // Sparkling glint flash when face catches the sun
+          if (ud.glintMat) {
+            const rotMod = (coin.rotation.z + ud.phase) % Math.PI;
+            const glintIntensity = Math.max(0, Math.cos(rotMod * 2));
+            const isFlashing = glintIntensity > 0.84;
+            ud.glintMat.opacity = isFlashing ? Math.pow((glintIntensity - 0.84) / 0.16, 2) : 0;
+            if (isFlashing && ud.glint) {
+              const s = 0.8 + glintIntensity * 0.4;
+              ud.glint.scale.set(s, s, s);
+            }
+          }
+        }
+      }
+    }
+
+    function spawnCoinSparkles(x, y, z) {
+      const geom = new THREE.DodecahedronGeometry(0.12, 0);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 1.0 });
+      for (let i = 0; i < 12; i++) {
+        const p = new THREE.Mesh(geom, mat.clone());
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.0 + Math.random() * 3.5;
+        p.position.set(x, y, z);
+        p.userData = {
+          vx: Math.cos(angle) * speed,
+          vy: 1.5 + Math.random() * 4.0,
+          vz: Math.sin(angle) * speed,
+          life: 1.0,
+          decay: 2.4 + Math.random() * 1.5
+        };
+        scene.add(p);
+        coinSparkleParticles.push(p);
+      }
+    }
+
+    function updateCoinSparkles(dt) {
+      for (let i = coinSparkleParticles.length - 1; i >= 0; i--) {
+        const p = coinSparkleParticles[i];
+        const ud = p.userData;
+        ud.vy -= 9.8 * dt;
+        p.position.x += ud.vx * dt;
+        p.position.y += ud.vy * dt;
+        p.position.z += ud.vz * dt;
+        ud.life -= ud.decay * dt;
+        p.scale.setScalar(Math.max(0.1, ud.life));
+        p.material.opacity = Math.max(0, ud.life);
+        if (ud.life <= 0) {
+          scene.remove(p);
+          coinSparkleParticles.splice(i, 1);
+        }
+      }
+    }
+
+    // --- 9. PROGRESSIVE OBSTACLES SYSTEM ---
+    function createBarrelObstacle(x, z, bridgeWidth, isMoving, speed, amplitude, phase) {
+      const barrelGroup = new THREE.Group();
+
+      // Barrel Body (Staves)
+      const bMat = new THREE.MeshStandardMaterial({ color: 0x824419, roughness: 0.72, metalness: 0.08 });
+      const bGeom = new THREE.CylinderGeometry(0.62, 0.62, 1.35, 16);
+      const bMesh = new THREE.Mesh(bGeom, bMat);
+      barrelGroup.add(bMesh);
+
+      // Iron Hoops (top and bottom)
+      const ironMat = new THREE.MeshStandardMaterial({ color: 0x2d3436, metalness: 0.85, roughness: 0.35 });
+      const hoopGeom = new THREE.CylinderGeometry(0.64, 0.64, 0.08, 16);
+      const topHoop = new THREE.Mesh(hoopGeom, ironMat);
+      topHoop.position.y = 0.45;
+      barrelGroup.add(topHoop);
+
+      const botHoop = new THREE.Mesh(hoopGeom, ironMat);
+      botHoop.position.y = -0.45;
+      barrelGroup.add(botHoop);
+
+      // Warning Danger Band (center)
+      const dangerMat = new THREE.MeshStandardMaterial({ color: 0xe15b24, roughness: 0.5 });
+      const dangerBand = new THREE.Mesh(new THREE.CylinderGeometry(0.635, 0.635, 0.22, 16), dangerMat);
+      barrelGroup.add(dangerBand);
+
+      // Studded protective spikes protruding outward
+      const spikeMat = new THREE.MeshStandardMaterial({ color: 0x4a2408, roughness: 0.8 });
+      const spikeGeom = new THREE.ConeGeometry(0.12, 0.28, 6);
+      for (let s = 0; s < 6; s++) {
+        const sAng = (s / 6) * Math.PI * 2;
+        const spike = new THREE.Mesh(spikeGeom, spikeMat);
+        spike.position.set(Math.cos(sAng) * 0.64, 0, Math.sin(sAng) * 0.64);
+        spike.rotation.z = -Math.PI / 2;
+        spike.rotation.y = -sAng;
+        barrelGroup.add(spike);
+      }
+
+      barrelGroup.position.set(x, 0.75, z);
+      scene.add(barrelGroup);
+
+      const obs = {
+        type: "barrel",
+        mesh: barrelGroup,
+        radius: 0.75,
+        isMoving: isMoving,
+        speed: speed,
+        amplitude: amplitude,
+        phase: phase,
+        baseX: x
+      };
+      obstacleObjects.push(obs);
+      return obs;
+    }
+
+    function createSweeperObstacle(x, z, bridgeWidth, armLength, rotSpeed) {
+      const sweeperGroup = new THREE.Group();
+
+      // Central timber post
+      const postMat = new THREE.MeshStandardMaterial({ color: 0x5a2d0c, roughness: 0.8 });
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 1.9, 12), postMat);
+      post.position.y = 0.95;
+      sweeperGroup.add(post);
+
+      // Brass pivot cap
+      const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.25 });
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12), brassMat);
+      cap.position.y = 1.9;
+      sweeperGroup.add(cap);
+
+      // Rotating Horizontal Arm Group
+      const armGroup = new THREE.Group();
+      armGroup.position.set(0, 0.55, 0);
+
+      const armMat = new THREE.MeshStandardMaterial({ color: 0xc87126, roughness: 0.6 });
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(armLength * 2, 0.28, 0.28), armMat);
+      armGroup.add(arm);
+
+      // Hazard tips on both ends
+      const tipMat = new THREE.MeshStandardMaterial({ color: 0xeb3b5a, roughness: 0.4 });
+      const tip1 = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.3), tipMat);
+      tip1.position.x = armLength - 0.22;
+      armGroup.add(tip1);
+
+      const tip2 = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.3), tipMat);
+      tip2.position.x = -armLength + 0.22;
+      armGroup.add(tip2);
+
+      sweeperGroup.add(armGroup);
+      sweeperGroup.position.set(x, 0, z);
+      scene.add(sweeperGroup);
+
+      const obs = {
+        type: "sweeper",
+        mesh: sweeperGroup,
+        armGroup: armGroup,
+        armLength: armLength,
+        rotSpeed: rotSpeed
+      };
+      obstacleObjects.push(obs);
+      return obs;
+    }
+
+    function createGateObstacle(x, z, bridgeWidth, gateWidth, speed, amplitude, phase) {
+      const gateGroup = new THREE.Group();
+
+      // Timber barrier block
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x934a17, roughness: 0.72 });
+      const block = new THREE.Mesh(new THREE.BoxGeometry(gateWidth, 1.1, 0.7), woodMat);
+      block.position.y = 0.55;
+      gateGroup.add(block);
+
+      // Iron rebar braces
+      const ironMat = new THREE.MeshStandardMaterial({ color: 0x2d3436, metalness: 0.8, roughness: 0.3 });
+      const brace1 = new THREE.Mesh(new THREE.BoxGeometry(gateWidth + 0.05, 0.12, 0.75), ironMat);
+      brace1.position.y = 0.85;
+      gateGroup.add(brace1);
+
+      const brace2 = new THREE.Mesh(new THREE.BoxGeometry(gateWidth + 0.05, 0.12, 0.75), ironMat);
+      brace2.position.y = 0.25;
+      gateGroup.add(brace2);
+
+      // Warning Chevron
+      const chevMat = new THREE.MeshStandardMaterial({ color: 0xf7b731, roughness: 0.4 });
+      const chev = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.78), chevMat);
+      chev.position.y = 0.55;
+      gateGroup.add(chev);
+
+      gateGroup.position.set(x, 0, z);
+      scene.add(gateGroup);
+
+      const obs = {
+        type: "gate",
+        mesh: gateGroup,
+        width: gateWidth,
+        depth: 0.7,
+        isMoving: true,
+        speed: speed,
+        amplitude: amplitude,
+        phase: phase,
+        baseX: x
+      };
+      obstacleObjects.push(obs);
+      return obs;
+    }
+
+    function createPendulumObstacle(x, z, bridgeWidth, freq, maxAngle, phase) {
+      const frameGroup = new THREE.Group();
+
+      // Overhead timber frame spanning bridge
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x783912, roughness: 0.8 });
+      const spanW = bridgeWidth + 0.8;
+
+      // Vertical support posts
+      const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4.6, 8), frameMat);
+      p1.position.set(-spanW / 2, 2.3, 0);
+      frameGroup.add(p1);
+
+      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4.6, 8), frameMat);
+      p2.position.set(spanW / 2, 2.3, 0);
+      frameGroup.add(p2);
+
+      // Horizontal overhead beam
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(spanW + 0.4, 0.35, 0.35), frameMat);
+      beam.position.set(0, 4.5, 0);
+      frameGroup.add(beam);
+
+      // Swing group hanging from center
+      const swingGroup = new THREE.Group();
+      swingGroup.position.set(0, 4.4, 0);
+
+      // Hanging iron rod
+      const rodMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.85, roughness: 0.3 });
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.4, 6), rodMat);
+      rod.position.y = -1.7;
+      swingGroup.add(rod);
+
+      // Heavy studded wooden mallet bob
+      const bobMat = new THREE.MeshStandardMaterial({ color: 0x6e3510, roughness: 0.65 });
+      const bob = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.9, 14), bobMat);
+      bob.rotation.z = Math.PI / 2;
+      bob.position.y = -3.4;
+      swingGroup.add(bob);
+
+      // Heavy iron hoops on mallet
+      const ironRingMat = new THREE.MeshStandardMaterial({ color: 0x2f3640, metalness: 0.9, roughness: 0.3 });
+      const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.06, 6, 16), ironRingMat);
+      ring1.position.set(-0.35, -3.4, 0);
+      ring1.rotation.y = Math.PI / 2;
+      swingGroup.add(ring1);
+
+      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.06, 6, 16), ironRingMat);
+      ring2.position.set(0.35, -3.4, 0);
+      ring2.rotation.y = Math.PI / 2;
+      swingGroup.add(ring2);
+
+      frameGroup.add(swingGroup);
+      frameGroup.position.set(x, 0, z);
+      scene.add(frameGroup);
+
+      const obs = {
+        type: "pendulum",
+        mesh: frameGroup,
+        pendulumArm: swingGroup,
+        armLength: 3.4,
+        bobPos: new THREE.Vector3(),
+        bobRadius: 0.72,
+        freq: freq,
+        maxAngle: maxAngle,
+        phase: phase
+      };
+      obstacleObjects.push(obs);
+      return obs;
+    }
+
+    function updateObstacles(dt, time) {
+      for (let i = 0; i < obstacleObjects.length; i++) {
+        const obs = obstacleObjects[i];
+        if (obs.type === "barrel") {
+          if (obs.isMoving) {
+            const offset = Math.sin(time * obs.speed + obs.phase) * obs.amplitude;
+            obs.mesh.position.x = obs.baseX + offset;
+            obs.mesh.rotation.z = -(offset / 0.65);
+          }
+        } else if (obs.type === "sweeper") {
+          obs.armGroup.rotation.y += obs.rotSpeed * dt;
+        } else if (obs.type === "gate") {
+          const offset = Math.sin(time * obs.speed + obs.phase) * obs.amplitude;
+          obs.mesh.position.x = obs.baseX + offset;
+        } else if (obs.type === "pendulum") {
+          const swingAngle = Math.sin(time * obs.freq + obs.phase) * obs.maxAngle;
+          obs.pendulumArm.rotation.z = swingAngle;
+          // Calculate world position of bob
+          const bobLocalY = -obs.armLength;
+          const bobWorldX = obs.mesh.position.x + Math.sin(swingAngle) * (-bobLocalY);
+          const bobWorldY = obs.mesh.position.y + 4.4 - Math.cos(swingAngle) * (-bobLocalY);
+          obs.bobPos.set(bobWorldX, bobWorldY, obs.mesh.position.z);
+        }
+      }
+    }
+
+    function checkObstacleCollisions(dt) {
+      if (!ballPos || isFallingInHazard) return;
+      const ballRadius = 1.0;
+
+      for (let i = 0; i < obstacleObjects.length; i++) {
+        const obs = obstacleObjects[i];
+        if (Math.abs(ballPos.z - obs.mesh.position.z) > 3.2) continue;
+
+        let hit = false;
+        let hitNormalX = 0;
+        let hitNormalZ = 0;
+
+        if (obs.type === "barrel") {
+          const bPos = obs.mesh.position;
+          const dx = ballPos.x - bPos.x;
+          const dz = ballPos.z - bPos.z;
+          const dist = Math.hypot(dx, dz);
+          const minDist = ballRadius + obs.radius;
+          if (dist < minDist && ballPos.y < bPos.y + 1.2 && ballPos.y > bPos.y - 0.9) {
+            hit = true;
+            hitNormalX = dist > 0.001 ? dx / dist : (ballPos.x >= bPos.x ? 1 : -1);
+            hitNormalZ = dist > 0.001 ? dz / dist : -1;
+          }
+        } else if (obs.type === "sweeper") {
+          const armRot = obs.armGroup.rotation.y;
+          const armLen = obs.armLength;
+          const sPos = obs.mesh.position;
+          const dx = ballPos.x - sPos.x;
+          const dz = ballPos.z - sPos.z;
+          const cos = Math.cos(armRot);
+          const sin = Math.sin(armRot);
+          const proj = dx * cos + dz * sin;
+          if (Math.abs(proj) <= armLen) {
+            const perp = Math.abs(-dx * sin + dz * cos);
+            if (perp < ballRadius + 0.32 && ballPos.y < sPos.y + 1.4 && ballPos.y > sPos.y - 0.2) {
+              hit = true;
+              const sign = (-dx * sin + dz * cos) >= 0 ? 1 : -1;
+              hitNormalX = -sin * sign;
+              hitNormalZ = cos * sign;
+            }
+          }
+        } else if (obs.type === "gate") {
+          const gPos = obs.mesh.position;
+          const halfW = obs.width / 2;
+          const halfD = obs.depth / 2;
+          if (
+            ballPos.x >= gPos.x - halfW - ballRadius * 0.8 &&
+            ballPos.x <= gPos.x + halfW + ballRadius * 0.8 &&
+            ballPos.z >= gPos.z - halfD - ballRadius * 0.8 &&
+            ballPos.z <= gPos.z + halfD + ballRadius * 0.8 &&
+            ballPos.y >= gPos.y - 0.5 && ballPos.y <= gPos.y + 1.6
+          ) {
+            hit = true;
+            const dx = ballPos.x - gPos.x;
+            const dz = ballPos.z - gPos.z;
+            hitNormalX = dx >= 0 ? 1 : -1;
+            hitNormalZ = dz >= 0 ? 0.3 : -1;
+          }
+        } else if (obs.type === "pendulum") {
+          const pDist = ballPos.distanceTo(obs.bobPos);
+          if (pDist < ballRadius + obs.bobRadius) {
+            hit = true;
+            const dx = ballPos.x - obs.bobPos.x;
+            const dz = ballPos.z - obs.bobPos.z;
+            const d = Math.hypot(dx, dz) || 1;
+            hitNormalX = dx / d;
+            hitNormalZ = dz / d;
+          }
+        }
+
+        if (hit) {
+          ballVel.x += hitNormalX * 13.5;
+          ballVel.z = Math.min(ballVel.z * 0.35, 5.0);
+          ballSquash = 0.74;
+          audio.playSfx("collision");
+          if (window.AndroidBridge && window.AndroidBridge.vibrate) {
+            window.AndroidBridge.vibrate(30);
+          }
+          break;
+        }
+      }
+    }
+
+    // --- 10. PROGRESSIVE LEVEL TRACK BUILDER ---
     function buildLevelTrack(lvl) {
       trackObjects.forEach(obj => scene.remove(obj.mesh));
       coinObjects.forEach(c => scene.remove(c));
-      if (inWorldLevelBanner) scene.remove(inWorldLevelBanner);
+      obstacleObjects.forEach(o => scene.remove(o.mesh));
+      if (inWorldLevelBanner) {
+        scene.remove(inWorldLevelBanner);
+        inWorldLevelBanner = null;
+      }
       trackObjects = [];
       coinObjects = [];
+      obstacleObjects = [];
 
-      trackLength = Math.min(600, 190 + lvl * 25);
-      const bridgeWidth = Math.max(3.6, 5.8 - Math.min(2.0, (lvl - 1) * 0.22));
+      // Balanced Progressive Difficulty Scaling Formula
+      trackLength = Math.min(650, 180 + lvl * 22);
+      const bridgeWidth = Math.max(2.8, 5.6 - Math.min(2.8, (lvl - 1) * 0.18));
 
       // Re-populate islands with animated trees along track length
       buildSandyIslandsAndTrees();
@@ -1687,11 +2474,10 @@
       // Build sequential segmented wooden plank bridge
       let currentZ = 0;
       let currentX = 0;
+      const pathNodes = [];
 
       while (currentZ < trackLength) {
         const segLen = 16.0;
-
-        // Bridge segment group (individual wooden planks like in screenshot!)
         const segGroup = new THREE.Group();
 
         // Longitudinal stringer beams underneath
@@ -1704,7 +2490,7 @@
         rightBeam.position.set(bridgeWidth / 2 - 0.2, -0.25, segLen / 2);
         segGroup.add(rightBeam);
 
-        // Cross planks (spaced along segLen)
+        // Cross planks
         const numPlanks = 14;
         const plankStep = segLen / numPlanks;
         for (let p = 0; p < numPlanks; p++) {
@@ -1714,7 +2500,7 @@
           segGroup.add(plankMesh);
         }
 
-        // Support vertical posts every segment dipping down into water
+        // Support vertical posts dipping down into water
         const postGeom = new THREE.CylinderGeometry(0.2, 0.2, 6.0, 6);
         const leftPost = new THREE.Mesh(postGeom, postMat);
         leftPost.position.set(-bridgeWidth / 2 + 0.15, -2.8, 1.0);
@@ -1733,25 +2519,18 @@
           maxX: currentX + bridgeWidth / 2,
           minY: 0,
           minZ: currentZ,
-          maxZ: currentZ + segLen
+          maxZ: currentZ + segLen,
+          x: currentX,
+          z: currentZ
         });
 
-        // Floating Gold Coins
-        if (currentZ > 10 && currentZ < trackLength - 20) {
-          const coinGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16);
-          const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.2 });
-          const coin = new THREE.Mesh(coinGeom, coinMat);
-          coin.rotation.x = Math.PI / 2;
-          coin.position.set(currentX + (Math.random() - 0.5) * (bridgeWidth - 1.6), 0.85, currentZ + 8);
-          scene.add(coin);
-          coinObjects.push(coin);
-        }
-
+        pathNodes.push({ x: currentX, z: currentZ });
         currentZ += segLen;
 
-        // Mild turn from level 2 onwards
-        if (lvl >= 2 && currentZ > 30 && Math.random() > 0.45) {
-          currentX = THREE.MathUtils.clamp(currentX + (Math.random() - 0.5) * 2.2, -4.5, 4.5);
+        // Mild turn from level 2 onwards, slightly more dynamic in higher levels
+        if (lvl >= 2 && currentZ > 30 && currentZ < trackLength - 30 && Math.random() > 0.42) {
+          const maxCurve = Math.min(4.8, 2.2 + lvl * 0.15);
+          currentX = THREE.MathUtils.clamp(currentX + (Math.random() - 0.5) * 2.4, -maxCurve, maxCurve);
         }
       }
 
@@ -1762,35 +2541,196 @@
       arch.position.set(currentX, 3.0, trackLength);
       scene.add(arch);
 
-      // In-World 3D Floating "LEVEL X" Billboard Text at start (matches screenshot!)
+      // --- PROCEDURAL PROGRESSIVE OBSTACLES & COINS PLACEMENT ---
+      const startZ = 28.0; // Guaranteed safe starting grace period
+      const endZ = trackLength - 24.0; // Guaranteed safe celebration runway
+      const playLength = endZ - startZ;
+      const obsSpacing = Math.max(16.0, 32.0 - Math.min(14.0, (lvl - 1) * 1.1));
+      const numSlots = Math.floor(playLength / obsSpacing);
+
+      function getTrackXAtZ(targetZ) {
+        for (let i = 0; i < pathNodes.length; i++) {
+          if (targetZ >= pathNodes[i].z && targetZ <= pathNodes[i].z + 16.0) {
+            return pathNodes[i].x;
+          }
+        }
+        return 0;
+      }
+
+      for (let s = 0; s < numSlots; s++) {
+        const slotZ = startZ + s * obsSpacing + 4.0;
+        const trackX = getTrackXAtZ(slotZ);
+
+        if (lvl === 1) {
+          // Level 1 Tutorial: Exactly 3 static crates/barrels with wide open passage (>3.6 width)
+          if (s === 1 || s === 3) {
+            const side = (s % 2 === 0) ? -1 : 1;
+            const bX = trackX + side * 1.5;
+            createBarrelObstacle(bX, slotZ, bridgeWidth, false, 0, 0, 0);
+            // Coins guide player safely along the opposite lane
+            createRealisticCoin(trackX - side * 1.2, 0.85, slotZ - 4);
+            createRealisticCoin(trackX - side * 1.2, 0.85, slotZ);
+            createRealisticCoin(trackX - side * 1.2, 0.85, slotZ + 4);
+          } else {
+            createRealisticCoin(trackX, 0.85, slotZ);
+          }
+        } else if (lvl <= 3) {
+          // Levels 2-3: Oscillating barrels + static crates. Spacing ~30m.
+          if (s % 2 === 0) {
+            const amp = Math.min(1.4, (bridgeWidth / 2) - 1.0);
+            createBarrelObstacle(trackX, slotZ, bridgeWidth, true, 1.4 + lvl * 0.2, amp, s * 1.5);
+          } else {
+            const side = (s % 4 === 1) ? -1 : 1;
+            createBarrelObstacle(trackX + side * (bridgeWidth / 3.2), slotZ, bridgeWidth, false, 0, 0, 0);
+          }
+          // Rewarding coin paths
+          createRealisticCoin(trackX + (s % 2 === 0 ? 1.0 : -1.0), 0.85, slotZ - 6);
+          createRealisticCoin(trackX, 0.85, slotZ + 6);
+        } else if (lvl <= 5) {
+          // Levels 4-5: Rotating sweepers & sliding gates
+          const pattern = s % 3;
+          if (pattern === 0) {
+            const armLen = Math.min(2.0, (bridgeWidth / 2) - 0.4);
+            createSweeperObstacle(trackX, slotZ, bridgeWidth, armLen, 1.6 + lvl * 0.15);
+          } else if (pattern === 1) {
+            const gWidth = Math.min(1.6, bridgeWidth * 0.4);
+            const amp = Math.min(1.2, (bridgeWidth / 2) - 0.9);
+            createGateObstacle(trackX, slotZ, bridgeWidth, gWidth, 1.6, amp, s);
+          } else {
+            const amp = Math.min(1.4, (bridgeWidth / 2) - 0.9);
+            createBarrelObstacle(trackX, slotZ, bridgeWidth, true, 1.8, amp, s * 2.1);
+          }
+          createRealisticCoin(trackX + ((s % 2 === 0) ? 0.9 : -0.9), 0.85, slotZ - 6);
+          createRealisticCoin(trackX + ((s % 2 === 0) ? -0.9 : 0.9), 0.85, slotZ + 6);
+        } else if (lvl <= 10) {
+          // Levels 6-10: Pendulums, moving sweepers, sliding gates & barrels
+          const pattern = s % 4;
+          if (pattern === 0) {
+            createPendulumObstacle(trackX, slotZ, bridgeWidth, 2.0 + lvl * 0.08, 0.75, s * 1.8);
+          } else if (pattern === 1) {
+            const armLen = Math.min(1.8, (bridgeWidth / 2) - 0.35);
+            createSweeperObstacle(trackX, slotZ, bridgeWidth, armLen, 1.8 + lvl * 0.12);
+          } else if (pattern === 2) {
+            const gWidth = Math.min(1.5, bridgeWidth * 0.42);
+            const amp = Math.min(1.2, (bridgeWidth / 2) - 0.8);
+            createGateObstacle(trackX, slotZ, bridgeWidth, gWidth, 1.8 + lvl * 0.1, amp, s * 1.2);
+          } else {
+            const amp = Math.min(1.3, (bridgeWidth / 2) - 0.8);
+            createBarrelObstacle(trackX, slotZ, bridgeWidth, true, 2.0 + lvl * 0.1, amp, s * 2.4);
+          }
+          createRealisticCoin(trackX + ((s % 2 === 0) ? 0.8 : -0.8), 0.85, slotZ - 6);
+          createRealisticCoin(trackX, 0.85, slotZ + 6);
+        } else {
+          // Levels 11+: High challenge dynamic scaling formula
+          const pattern = s % 4;
+          const dynSpeed = 1.6 + Math.min(3.2, Math.sqrt(lvl) * 0.65);
+          if (pattern === 0) {
+            createPendulumObstacle(trackX, slotZ, bridgeWidth, dynSpeed * 0.9, 0.8, s * 1.7);
+          } else if (pattern === 1) {
+            const armLen = Math.min(1.7, (bridgeWidth / 2) - 0.3);
+            createSweeperObstacle(trackX, slotZ, bridgeWidth, armLen, dynSpeed);
+          } else if (pattern === 2) {
+            const gWidth = Math.min(1.4, bridgeWidth * 0.4);
+            const amp = Math.min(1.1, (bridgeWidth / 2) - 0.7);
+            createGateObstacle(trackX, slotZ, bridgeWidth, gWidth, dynSpeed, amp, s * 1.4);
+          } else {
+            const amp = Math.min(1.2, (bridgeWidth / 2) - 0.7);
+            createBarrelObstacle(trackX, slotZ, bridgeWidth, true, dynSpeed, amp, s * 2.2);
+          }
+          createRealisticCoin(trackX + ((s % 2 === 0) ? 0.7 : -0.7), 0.85, slotZ - 5);
+          createRealisticCoin(trackX, 0.85, slotZ + 5);
+        }
+      }
+
+      // Bonus coins in open spaces
+      for (let z = 14; z < trackLength - 20; z += 18) {
+        if (!coinObjects.some(c => Math.abs(c.position.z - z) < 4.0)) {
+          const tX = getTrackXAtZ(z);
+          createRealisticCoin(tX, 0.85, z);
+        }
+      }
+
+      // In-World 3D Floating "LEVEL X" Billboard Text at start
       buildInWorldLevelText(lvl);
     }
 
-    function buildInWorldLevelText(lvl) {
-      const bannerCanvas = document.createElement("canvas");
-      bannerCanvas.width = 512;
-      bannerCanvas.height = 128;
-      const bCtx = bannerCanvas.getContext("2d");
-      bCtx.clearRect(0, 0, 512, 128);
+    function roundRectHelper(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
 
-      bCtx.font = "900 80px -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-      bCtx.textAlign = "center";
-      bCtx.textBaseline = "middle";
+    function buildInWorldLevelText(lvl) {
+      if (inWorldLevelBanner) {
+        scene.remove(inWorldLevelBanner);
+        inWorldLevelBanner = null;
+      }
+      const bannerCanvas = document.createElement("canvas");
+      bannerCanvas.width = 1024;
+      bannerCanvas.height = 256;
+      const bCtx = bannerCanvas.getContext("2d");
+      bCtx.clearRect(0, 0, 1024, 256);
+
+      // Translucent rounded dark glass card
+      bCtx.fillStyle = "rgba(12, 28, 48, 0.78)";
+      roundRectHelper(bCtx, 64, 20, 896, 216, 36);
+      bCtx.fill();
+
+      // Gleaming 24K Gold border
+      bCtx.strokeStyle = "#ffd700";
+      bCtx.lineWidth = 8;
+      roundRectHelper(bCtx, 64, 20, 896, 216, 36);
+      bCtx.stroke();
 
       // Drop shadow
-      bCtx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      bCtx.fillText(`LEVEL  ${lvl}`, 256 + 4, 64 + 4);
+      bCtx.font = "900 108px -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+      bCtx.textAlign = "center";
+      bCtx.textBaseline = "middle";
+      bCtx.fillStyle = "rgba(0, 0, 0, 0.85)";
+      bCtx.fillText(`LEVEL  ${lvl}`, 512 + 5, 110 + 5);
 
-      // Bright white 3D text
-      bCtx.fillStyle = "#ffffff";
-      bCtx.fillText(`LEVEL  ${lvl}`, 256, 64);
+      // Gradient 3D Text
+      const grad = bCtx.createLinearGradient(0, 60, 0, 160);
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.5, "#fff2a8");
+      grad.addColorStop(1, "#f5b716");
+      bCtx.fillStyle = grad;
+      bCtx.fillText(`LEVEL  ${lvl}`, 512, 110);
+
+      // Subtitle
+      bCtx.font = "800 36px -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+      bCtx.fillStyle = "#38ef7d";
+      bCtx.fillText("★ READY? ROLL FORWARD ★", 512, 186);
 
       const texture = new THREE.CanvasTexture(bannerCanvas);
-      const bannerMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-      const bannerGeom = new THREE.PlaneGeometry(12, 3);
+      const bannerMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 1.0, side: THREE.FrontSide });
+      const bannerGeom = new THREE.PlaneGeometry(10, 2.5);
       inWorldLevelBanner = new THREE.Mesh(bannerGeom, bannerMat);
-      inWorldLevelBanner.position.set(0, 4.5, 14);
+      inWorldLevelBanner.position.set(0, 3.8, 12);
+      // Face towards camera (camera is at z < 12 looking along +Z, so plane normal must point -Z)
+      inWorldLevelBanner.rotation.y = Math.PI;
       scene.add(inWorldLevelBanner);
+    }
+
+    function updateLevelBanner(dt) {
+      if (inWorldLevelBanner && ballPos) {
+        if (ballPos.z > 6.0) {
+          const fade = Math.max(0, 1.0 - (ballPos.z - 6.0) / 14.0);
+          inWorldLevelBanner.material.opacity = fade;
+          inWorldLevelBanner.visible = fade > 0.01;
+        } else {
+          inWorldLevelBanner.material.opacity = 1.0;
+          inWorldLevelBanner.visible = true;
+        }
+      }
     }
 
     // --- 9. PLAYER BALL & DYNAMIC DROP SHADOW ---
@@ -2066,8 +3006,16 @@
       // 5. ULTRA-SMOOTH BALL PHYSICS & WATER HYDRODYNAMICS
       updateSmoothPhysics(dt, time);
 
-      // Check Coin pickups
+      // Animate Obstacles
+      updateObstacles(dt, time);
+
+      // Animate Realistic Coins & Collect
+      updateCoins(dt, time);
       checkCoinPickups();
+
+      // Sparkle Dust & In-World Banner Fade
+      updateCoinSparkles(dt);
+      updateLevelBanner(dt);
 
       // Check Victory Condition
       if (ballPos && ballPos.z >= trackLength && !isFallingInHazard) {
@@ -2087,7 +3035,8 @@
       if (!ballPos || !ballVel) return;
 
       const gravity = -26.0;
-      const targetForwardSpeed = 16.0 + Math.min(6.0, gameSave.level * 0.25);
+      const baseSpeed = 15.0;
+      const targetForwardSpeed = baseSpeed + Math.min(9.5, Math.log2(gameSave.level) * 2.2 + (gameSave.level > 10 ? (gameSave.level - 10) * 0.22 : 0));
       const sens = gameSave.soundSettings.sensitivity || 1.0;
       const maxTurnSpeed = 12.0 * sens;
 
@@ -2141,9 +3090,9 @@
       // ULTRA-SMOOTH FORWARD ACCELERATION & INERTIA (Frame-Rate Independent)
       ballVel.z = expDecay(ballVel.z, targetForwardSpeed, 5.0, dt);
 
-      // BUTTERY-SMOOTH STEERING RESPONSE (Camera-relative: screen right = -X, screen left = +X)
+      // BUTTERY-SMOOTH STEERING RESPONSE (Camera-relative: screen right = +X, screen left = -X)
       currentSteer = expDecay(currentSteer, targetSteer, 14.0, dt);
-      const targetLateralSpeed = -currentSteer * maxTurnSpeed;
+      const targetLateralSpeed = currentSteer * maxTurnSpeed;
       ballVel.x = expDecay(ballVel.x, targetLateralSpeed, 12.0, dt);
 
       // Gravity
@@ -2153,6 +3102,9 @@
       ballPos.x += ballVel.x * dt;
       ballPos.y += ballVel.y * dt;
       ballPos.z += ballVel.z * dt;
+
+      // Progressive Obstacle Collisions & Deflection Physics
+      checkObstacleCollisions(dt);
 
       // Track Planks Collision Detection & Suspension Landing
       isGrounded = false;
@@ -2205,9 +3157,9 @@
       }
 
       // SMOOTH DYNAMIC LEAN / BANKING INTO STEERING TURNS
-      const targetLean = -currentSteer * 0.14;
+      const targetLean = currentSteer * 0.14;
       ballLeanAngle = expDecay(ballLeanAngle, targetLean, 10.0, dt);
-      playerBall.rotation.y = ballLeanAngle;
+      playerBall.rotation.y = -ballLeanAngle;
 
       // SMOOTH SQUASH & STRETCH RECOVERY
       ballSquash = expDecay(ballSquash, 1.0, 16.0, dt);
@@ -2296,8 +3248,8 @@
       if (!ballPos) return;
       for (let i = coinObjects.length - 1; i >= 0; i--) {
         const coin = coinObjects[i];
-        coin.rotation.z += 0.06;
-        if (coin.position.distanceTo(ballPos) < 1.6) {
+        if (coin.position.distanceTo(ballPos) < 1.7) {
+          spawnCoinSparkles(coin.position.x, coin.position.y, coin.position.z);
           scene.remove(coin);
           coinObjects.splice(i, 1);
           gameSave.availablePoints += 10;
